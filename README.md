@@ -73,7 +73,11 @@ cd frontend
 python -m http.server 3000
 ```
 ---
-👥 Team TARS
+
+## 👥 Team TARS
 Engineered for the Bharatiya Antariksh Hackathon.
 
-Riya Sharma * Khushi Dalal * Jatin Khandelwal * Bhavishya Bhati 
+* **[Riya Sharma](https://github.com/riyaa8484)**
+* **[Khushi Dalal](https://github.com/khushiidalal)**
+* **[Jatin Khandelwal](https://github.com/jatinkhandelwal662-jk)**
+* **[Bhavishya Bhati](https://github.com/BHAVISHYA-2007)**
