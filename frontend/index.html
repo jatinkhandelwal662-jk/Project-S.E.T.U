@@ -195,7 +195,7 @@
 
             try {
                 // Backend now fetches the image autonomously without file uploads
-                const response = await fetch('http://localhost:8080/api/process-satellite-mask', { method: 'POST', body: formData });
+                const response = await fetch('https://jaitn9876-project-s-e-t-u-backend.hf.space/api/process-satellite-mask', { method: 'POST', body: formData });
                 
                 if (!response.ok) throw new Error("Backend Error");
                 const data = await response.json();
@@ -260,7 +260,7 @@
                         document.getElementById('sys-status').style.color = 'var(--accent-red)';
                         logAlert(`CRITICAL: Infrastructure failure simulated. Rerouting traffic...`, "critical");
 
-                        const res = await fetch('http://localhost:8080/api/ablate-edge', {
+                        const res = await fetch('https://jaitn9876-project-s-e-t-u-backend.hf.space/api/ablate-edge', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
