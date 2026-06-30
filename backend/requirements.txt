@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+torch
+torchvision
+networkx
+opencv-python
+scikit-image
+numpy
+pydantic
+requests
+albumentations
