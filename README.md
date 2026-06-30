@@ -71,7 +71,7 @@ cd Project-S.E.T.U/frontend
 
 # Launch a local web server
 python -m http.server 3000
-
+```bash
 
 ---
 👥 Team TARS
