@@ -1,0 +1,21 @@
+# Environments
+.env
+.venv/
+venv/
+env/
+ml_model/.venv/
+__pycache__/
+
+# Datasets and Imagery
+dataset/
+*.zip
+*.jpg
+*.png
+
+# Machine Learning Weights
+*.pth
+*.pt
+
+# Python/OS junk
+.DS_Store
+*.pyc

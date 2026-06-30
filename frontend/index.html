@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route Resilience Dashboard | TARS Engine</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+    <aside id="sidebar">
+        <div class="brand">
+            <h2>Name decide-Engine</h2>
+            <p class="subtitle">ISRO Geospatial Command</p>
+            <p class="help-text" style="margin-top: 10px; border-bottom: 1px solid #2a2d38; padding-bottom: 15px;">
+                AI-driven analysis for extreme terrain. Search for a region to autonomously fetch satellite feeds, map roads, and simulate disaster resilience.
+            </p>
+        </div>
+        
+        <div class="widget" style="margin-top: 20px;">
+            <h3>Step 1: Target Acquisition</h3>
+            <p class="help-text">Enter a village/city name or exact coordinates to acquire the orbital feed.</p>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="location-search" placeholder="e.g., Bengaluru, India" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
+                <button id="search-btn" style="width: 80px; padding: 8px; font-size: 13px;">Search</button>
+            </div>
+
+            <h4 style="margin-top: 15px; margin-bottom: 5px; color: var(--accent-cyan);">Target Coordinates</h4>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="number" id="target-lat" value="28.5355" step="0.0001" placeholder="Latitude" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
+                <input type="number" id="target-lon" value="77.1558" step="0.0001" placeholder="Longitude" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
+            </div>
+            
+            <h3 style="margin-top: 20px;">Step 2: AI Processing</h3>
+            <button id="process-btn" style="margin-top: 5px;">Initialize AI Pipeline</button>
+            
+            <div id="loading-spinner" class="hidden">
+                <div class="spinner"></div>
+                <p id="loading-text" style="color: var(--accent-cyan); font-weight: 600;">Acquiring Feed...</p>
+            </div>
+            
+            <button id="export-btn" class="hidden" style="background-color: #2a2d38; color: var(--accent-cyan); margin-top: 15px; border: 1px solid #3f3f5c;">
+                ⬇️ Export Map to QGIS
+            </button>
+        </div>
+    </aside>
+
+    <main id="main-content">
+        <header class="metrics-header">
+            <div class="metric-card">
+                <span class="label">System Status</span>
+                <span class="value" id="sys-status" style="color: var(--accent-cyan);">Standby</span>
+                <span class="help-text" style="font-size: 11px;">Awaiting satellite feed</span>
+            </div>
+            <div class="metric-card">
+                <span class="label">Network Resilience Index</span>
+                <span class="value" id="resilience-val" style="color: var(--text-secondary);">--</span>
+                <span class="help-text" style="font-size: 11px;">Overall vulnerability score</span>
+            </div>
+            <div class="metric-card">
+                <span class="label">Infrastructure Nodes Found</span>
+                <span class="value" id="stat-edges" style="color: var(--text-secondary);">0</span>
+                <span class="help-text" style="font-size: 11px;">Total interconnected routes</span>
+            </div>
+        </header>
+
+        <div id="map-container">
+            <div id="map"></div>
+            <div id="map-legend">
+                <h4>Vulnerability Heatmap</h4>
+                <div class="legend-item"><span class="color-box" style="background: #ff1744;"></span> Critical Bottleneck (High Risk)</div>
+                <div class="legend-item"><span class="color-box" style="background: #ff9100;"></span> Major Artery</div>
+                <div class="legend-item"><span class="color-box" style="background: #ffea00;"></span> Secondary Route</div>
+                <div class="legend-item"><span class="color-box" style="background: #00e5ff;"></span> Peripheral Link (Safe)</div>
+            </div>
+        </div>
+    </main>
+
+    <aside id="analytics-panel">
+        <div class="widget" style="border-left: 4px solid var(--accent-red);">
+            <h3>Step 3: Disaster Simulation</h3>
+            <p class="help-text" style="color: white;">
+                <strong>Test the network's breaking point.</strong><br><br>
+                Click any <span style="color: #ff1744; font-weight: bold;">Critical Route (Red)</span> on the map to simulate a bridge collapse, landslide, or blockage.<br><br>
+                The AI will instantly reroute traffic and recalculate the Resilience Index to show systemic impact.
+            </p>
+        </div>
+
+        <div class="widget">
+            <h3>Live Operations Log</h3>
+            <ul id="alert-list" class="alert-list">
+                <li class="alert-item system">Command center initialized. Ready for operations.</li>
+            </ul>
+        </div>
+    </aside>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map', { minZoom: 2, maxZoom: 18, zoomControl: false });
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri'
+        }).addTo(map);
+        
+        let geoJsonLayer = null;
+        let latestGeoJSON = null; 
+
+        // Set initial view to New Delhi
+        map.setView([28.5355, 77.1558], 13);
+
+        function getRouteColor(score) {
+            return score > 0.8 ? '#ff1744' : score > 0.5 ? '#ff9100' : score > 0.2 ? '#ffea00' : '#00e5ff';
+        }
+
+        function logAlert(message, type = 'system') {
+            const list = document.getElementById('alert-list');
+            const li = document.createElement('li');
+            li.className = `alert-item ${type}`;
+            li.innerText = message;
+            list.prepend(li); 
+            if(list.children.length > 5) list.removeChild(list.lastChild);
+        }
+
+        // --- NEW: GEOCODING SEARCH SYSTEM ---
+        document.getElementById('search-btn').addEventListener('click', async () => {
+            const query = document.getElementById('location-search').value;
+            if(!query) return;
+            
+            logAlert(`Querying geocoding registry for: ${query}`, "system");
+            try {
+                // OpenStreetMap Geocoding API (Proxy for Bhuvan API during demo)
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                if(data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+                    
+                    document.getElementById('target-lat').value = lat.toFixed(5);
+                    document.getElementById('target-lon').value = lon.toFixed(5);
+                    
+                    map.flyTo([lat, lon], 15, { duration: 1.5 });
+                    logAlert(`Coordinates locked: ${lat.toFixed(4)}, ${lon.toFixed(4)}`, "system");
+                } else {
+                    logAlert(`Geocoding failed: Location not found.`, "critical");
+                }
+            } catch(e) {
+                logAlert(`API Connection Error.`, "critical");
+            }
+        });
+
+        async function runLoadingSequence() {
+            const textEl = document.getElementById('loading-text');
+            const states = [
+                "Acquiring Autonomous Satellite Feed...",
+                "Bypassing Cloud Cover...",
+                "Extracting Topological Skeleton...",
+                "Healing Fragmented Networks...",
+                "Calculating Centrality Metrics..."
+            ];
+            for(let i=0; i<states.length; i++) {
+                textEl.innerText = states[i];
+                await new Promise(r => setTimeout(r, 800)); 
+            }
+        }
+
+        async function executePipeline() {
+            const centerLat = parseFloat(document.getElementById('target-lat').value);
+            const centerLon = parseFloat(document.getElementById('target-lon').value);
+            
+            // Calculate a ~1km bounding box footprint
+            const offset = 0.005; 
+            const dynamicBounds = [
+                [centerLat - offset, centerLon - offset], 
+                [centerLat + offset, centerLon + offset]  
+            ];
+
+            const formData = new FormData();
+            formData.append("min_lat", dynamicBounds[0][0]);
+            formData.append("max_lat", dynamicBounds[1][0]);
+            formData.append("min_lon", dynamicBounds[0][1]);
+            formData.append("max_lon", dynamicBounds[1][1]);
+
+            map.flyToBounds(dynamicBounds, { duration: 1.5 });
+
+            document.getElementById('loading-spinner').classList.remove('hidden');
+            document.getElementById('export-btn').classList.add('hidden'); 
+            document.getElementById('sys-status').innerText = "Acquiring Feed...";
+            document.getElementById('sys-status').style.color = 'var(--accent-orange)';
+            
+            const loadingStory = runLoadingSequence();
+
+            try {
+                // Backend now fetches the image autonomously without file uploads
+                const response = await fetch('http://localhost:8080/api/process-satellite-mask', { method: 'POST', body: formData });
+                
+                if (!response.ok) throw new Error("Backend Error");
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    throw new Error(data.error);
+                }
+
+                await loadingStory; 
+                renderNetwork(data);
+                
+                document.getElementById('sys-status').innerText = "Live / Stable";
+                document.getElementById('sys-status').style.color = 'var(--accent-green)';
+                logAlert("Network mapped successfully. Ready for Disaster Simulation.", "system");
+            } catch(e) { 
+                alert("Pipeline execution failed. Ensure python api.py is running on port 8080."); 
+                document.getElementById('sys-status').innerText = "Offline";
+                document.getElementById('sys-status').style.color = 'var(--accent-red)';
+            } finally { 
+                document.getElementById('loading-spinner').classList.add('hidden'); 
+            }
+        }
+
+        function renderNetwork(responseData) {
+            const geojsonData = responseData.network || responseData;
+            
+            if (responseData.status === "empty_terrain" || geojsonData.features.length === 0) {
+                if (geoJsonLayer) map.removeLayer(geoJsonLayer);
+                document.getElementById('stat-edges').innerText = "0";
+                document.getElementById('resilience-val').innerText = "0%";
+                document.getElementById('resilience-val').style.color = 'var(--accent-red)';
+                document.getElementById('sys-status').innerText = "No Infrastructure";
+                document.getElementById('sys-status').style.color = 'var(--accent-orange)';
+                logAlert("WARNING: Zero viable infrastructure detected in this terrain sector.", "critical");
+                document.getElementById('export-btn').classList.add('hidden');
+                return; 
+            }
+
+            const ri = responseData.resilience_index || 100;
+            latestGeoJSON = geojsonData;
+            document.getElementById('export-btn').classList.remove('hidden');
+
+            if (geoJsonLayer) map.removeLayer(geoJsonLayer);
+            document.getElementById('stat-edges').innerText = geojsonData.features.length;
+            document.getElementById('stat-edges').style.color = 'var(--text-primary)';
+            
+            const riEl = document.getElementById('resilience-val');
+            riEl.innerText = ri.toFixed(1) + "%";
+            riEl.style.color = ri > 80 ? 'var(--accent-green)' : ri > 50 ? 'var(--accent-orange)' : 'var(--accent-red)';
+
+            geoJsonLayer = L.geoJSON(geojsonData, {
+                style: f => ({ color: getRouteColor(f.properties.criticality_score), weight: 5, opacity: 0.9 }),
+                onEachFeature: (feature, layer) => {
+                    // Stop event bubbling directly in the click event
+                    layer.on('click', async (e) => {
+                        L.DomEvent.stopPropagation(e);
+                        
+                        layer.setStyle({ color: '#3f3f5c', dashArray: '5, 10', weight: 2 });
+                        
+                        document.getElementById('sys-status').innerText = "Recalculating...";
+                        document.getElementById('sys-status').style.color = 'var(--accent-red)';
+                        logAlert(`CRITICAL: Infrastructure failure simulated. Rerouting traffic...`, "critical");
+
+                        const res = await fetch('http://localhost:8080/api/ablate-edge', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                n1_y: feature.properties.pixel_n1[0], n1_x: feature.properties.pixel_n1[1],
+                                n2_y: feature.properties.pixel_n2[0], n2_x: feature.properties.pixel_n2[1]
+                            })
+                        });
+                        
+                        const result = await res.json();
+                        renderNetwork(result);
+                        
+                        document.getElementById('sys-status').innerText = "Degraded Mode";
+                        document.getElementById('sys-status').style.color = 'var(--accent-orange)';
+                        
+                        const penalty = result.impact_delta !== undefined ? result.impact_delta.toFixed(1) : "0.0";
+                        logAlert(`SYSTEM IMPACT: Emergency response time increased by +${penalty}%`, "critical");
+                    });
+                }
+            }).addTo(map);
+        }
+
+        document.getElementById('process-btn').addEventListener('click', executePipeline);
+        
+        document.getElementById('export-btn').addEventListener('click', () => {
+            if (!latestGeoJSON) return;
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(latestGeoJSON));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "tars_extracted_network.geojson");
+            document.body.appendChild(downloadAnchorNode); 
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            logAlert("GeoJSON payload exported for QGIS integration.", "system");
+        });
+    </script>
+</body>
+</html>
