@@ -19,7 +19,11 @@ def evaluate_model(model, test_loader, device):
             iou = (intersection + 1e-6) / (union + 1e-6)
             total_iou += iou.item()
             
-    print(f"Final Model IoU Score: {total_iou / len(test_loader):.4f}")
+    print(f"\n{'='*30}")
+    print(f"MODEL PERFORMANCE METRICS")
+    print(f"DATE: {pd.Timestamp.now()}")
+    print(f"FINAL IoU SCORE: {total_iou / len(test_loader):.4f}")
+    print(f"{'='*30}\n")
 
 # Usage
 # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
