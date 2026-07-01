@@ -62,4 +62,3 @@ class ISROCombinedLoss(nn.Module):
         )
         
         return total_loss
-        
