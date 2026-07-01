@@ -1,8 +1,9 @@
 <div align="center">
   <img src="frontend/favicon.png" alt="Logo" width="120" height="120">
-</div>
+
 # 🛰️ Project S.E.T.U (Spatial Extraction and Topological Utility)
 **Bharatiya Antariksh Hackathon 2026 | Problem Statement 4 - Route Resilience: Occlusion-Robust Road Extraction & Graph-Theoretic Criticality Analysis for Urban Mobility**
+</div>
 
 > *"Just as a Setu connects two separated lands, our engine mathematically bridges the gaps in occluded satellite imagery to create a unified, navigable network."*
 
