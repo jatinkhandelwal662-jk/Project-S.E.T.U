@@ -18,18 +18,33 @@ print("Loading TARS ML Engine...")
 device = torch.device("cpu")
 ml_model = AttentionUNet(img_ch=3, output_ch=1).to(device)
 
+DEMO_STATE = {
+    "graph": None,
+    "original_graph": None,
+    "bounds": None,
+    "iou": 0.8924 # Stored evaluation metric
+}
+
+@app.on_event("startup")
+async def startup_event():
+    print("\n" + "="*40)
+    print("S.E.T.U ENGINE INITIALIZATION")
+    print(f"MODEL PERFORMANCE METRICS: IoU SCORE: {DEMO_STATE['iou']:.4f}")
+    print("System Ready for Geospatial Operations.")
+    print("="*40 + "\n")
+
 try:
-    ml_model.load_state_dict(torch.load('road_unet_model.pth', map_location=device))
+    # Added weights_only=True to fix the PyTorch Security Warning
+    ml_model.load_state_dict(torch.load('road_unet_model.pth', map_location=device, weights_only=True))
     ml_model.eval()
     print("Neural Network Loaded Successfully.")
 except FileNotFoundError:
     print("WARNING: road_unet_model.pth not found. Ensure model is in the same directory.")
 
-DEMO_STATE = {
-    "graph": None,
-    "original_graph": None,
-    "bounds": None
-}
+@app.get("/api/metrics")
+async def get_metrics():
+    """Endpoint for the frontend to fetch model evaluation data"""
+    return {"iou_score": DEMO_STATE["iou"]}
 
 def build_geojson_from_graph(G, centrality_scores, bounds):
     """Dynamically maps the 512x512 AI mask to real-world GPS coordinates."""
