@@ -8,20 +8,17 @@
     <link rel="icon" href="favicon.png" type="image/png">
     <link rel="stylesheet" href="style.css" />
     <style>
-    /* Force the metrics header to be exactly 4 equal columns on one line */
     .metrics-header {
         display: grid !important;
         grid-template-columns: repeat(4, 1fr) !important;
         gap: 15px !important;
         width: 100% !important;
     }
-    
-    /* Ensure the cards fill their specific column cleanly */
     .metric-card {
         width: 100% !important;
         box-sizing: border-box !important;
     }
-</style>
+    </style>
 </head>
 
 <body>
@@ -57,9 +54,21 @@
                 <div class="spinner"></div>
                 <p id="loading-text" style="color: var(--accent-cyan); font-weight: 600;">Acquiring Feed...</p>
             </div>
+
+            <div class="widget" id="pipeline-layers" style="margin-top: 20px; display: none; padding: 0;">
+                <h3 style="color: var(--accent-cyan);">Pipeline Stages</h3>
+                <p class="help-text">Toggle views to match ISRO Phase IV specifications.</p>
+                <button id="view-sat" style="width: 100%; margin-bottom: 8px; background: #3f3f5c; color: white; border: 1px solid #5a5a7a;">1. Satellite View</button>
+                <button id="view-mask" style="width: 100%; margin-bottom: 8px; background: #2a2d38; color: white; border: 1px solid #5a5a7a;">2. AI Extraction Mask</button>
+                <button id="view-graph" style="width: 100%; margin-bottom: 8px; background: #2a2d38; color: white; border: 1px solid #5a5a7a;">3. Criticality Graph</button>
+            </div>
             
-            <button id="export-btn" class="hidden" style="background-color: #2a2d38; color: var(--accent-cyan); margin-top: 15px; border: 1px solid #3f3f5c;">
+            <button id="export-btn" class="hidden" style="background-color: #2a2d38; color: var(--accent-cyan); margin-top: 15px; border: 1px solid #3f3f5c; width: 100%;">
                 ⬇️ Export Map to QGIS
+            </button>
+
+            <button id="report-btn" class="hidden" style="background-color: #2a2d38; color: var(--accent-cyan); margin-top: 10px; border: 1px solid #3f3f5c; width: 100%;">
+                📊 Generate Resilience Report
             </button>
         </div>
     </aside>
@@ -120,13 +129,11 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // API Base pointed to your Live Hugging Face Space
         const API_BASE = "https://jaitn9876-project-s-e-t-u-backend.hf.space";
 
         const map = L.map('map', { minZoom: 2, maxZoom: 18, zoomControl: false });
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         
-        // High-Reliability Satellite Feed (with ISRO attribution for demo purposes)
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: 'Map data &copy; ISRO Bhuvan / Esri',
             maxZoom: 18
@@ -134,11 +141,11 @@
         
         let geoJsonLayer = null;
         let latestGeoJSON = null; 
+        let maskOverlayLayer = null; 
+        let currentBounds = null; 
 
-        // Set initial view to New Delhi
         map.setView([28.5355, 77.1558], 13);
 
-        // Fetch Metrics on Load
         fetch(`${API_BASE}/api/metrics`)
             .then(res => res.json())
             .then(data => {
@@ -223,13 +230,14 @@
 
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('export-btn').classList.add('hidden'); 
+            document.getElementById('report-btn').classList.add('hidden'); 
+            document.getElementById('pipeline-layers').style.display = 'none';
             document.getElementById('sys-status').innerText = "Acquiring Feed...";
             document.getElementById('sys-status').style.color = 'var(--accent-orange)';
             
             const loadingStory = runLoadingSequence();
 
             try {
-                // Using API_BASE for cloud execution
                 const response = await fetch(`${API_BASE}/api/process-satellite-mask`, { method: 'POST', body: formData });
                 
                 if (!response.ok) throw new Error("Backend Error");
@@ -241,11 +249,35 @@
                 }
 
                 await loadingStory; 
+
+                // ISRO PHASE IV: Store bounds and generate the AI Mask Overlay
+                currentBounds = dynamicBounds;
+                if (maskOverlayLayer) map.removeLayer(maskOverlayLayer);
+                
+                if (data.raw_mask_b64) {
+                    maskOverlayLayer = L.imageOverlay('data:image/png;base64,' + data.raw_mask_b64, currentBounds, {
+                        opacity: 0.85, 
+                        interactive: false 
+                    });
+                }
+
                 renderNetwork(data);
                 
                 document.getElementById('sys-status').innerText = "Live / Stable";
                 document.getElementById('sys-status').style.color = 'var(--accent-green)';
                 logAlert("Network mapped successfully. Ready for Disaster Simulation.", "system");
+
+                // Enable Actionable Toggles and Reports
+                if(data.status !== "empty_terrain") {
+                    document.getElementById('pipeline-layers').style.display = 'block';
+                    document.getElementById('report-btn').classList.remove('hidden');
+                    
+                    // Reset toggles to show graph by default
+                    document.getElementById('view-sat').style.background = '#2a2d38';
+                    document.getElementById('view-mask').style.background = '#2a2d38';
+                    document.getElementById('view-graph').style.background = '#3f3f5c';
+                }
+
             } catch(e) { 
                 alert("Pipeline execution failed. Ensure backend is running."); 
                 document.getElementById('sys-status').innerText = "Offline";
@@ -267,6 +299,8 @@
                 document.getElementById('sys-status').style.color = 'var(--accent-orange)';
                 logAlert("WARNING: Zero viable infrastructure detected in this terrain sector.", "critical");
                 document.getElementById('export-btn').classList.add('hidden');
+                document.getElementById('report-btn').classList.add('hidden');
+                document.getElementById('pipeline-layers').style.display = 'none';
                 return; 
             }
 
@@ -285,6 +319,10 @@
             geoJsonLayer = L.geoJSON(geojsonData, {
                 style: f => ({ color: getRouteColor(f.properties.criticality_score), weight: 5, opacity: 0.9 }),
                 onEachFeature: (feature, layer) => {
+                    // ACTIONABLE DATA: Add hover tooltip for non-technical planners
+                    const score = (feature.properties.criticality_score * 100).toFixed(1);
+                    layer.bindTooltip(`Criticality Index: ${score}%`, {sticky: true});
+
                     layer.on('click', async (e) => {
                         L.DomEvent.stopPropagation(e);
                         
@@ -294,7 +332,6 @@
                         document.getElementById('sys-status').style.color = 'var(--accent-red)';
                         logAlert(`CRITICAL: Infrastructure failure simulated. Rerouting traffic...`, "critical");
 
-                        // Using API_BASE for cloud execution
                         const res = await fetch(`${API_BASE}/api/ablate-edge`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -329,6 +366,40 @@
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
             logAlert("GeoJSON payload exported for QGIS integration.", "system");
+        });
+
+        // --- ISRO PHASE IV: ACTIONABLE REPORT BUTTON ---
+        document.getElementById('report-btn').addEventListener('click', () => {
+            const resVal = document.getElementById('resilience-val').innerText;
+            alert(`Strategic Planning Report:\n\nSector Resilience Index: ${resVal}\n\nThis sector is currently rated as a 'Critical Bottleneck' zone. Immediate hardening of the highlighted high-criticality links is recommended to prevent catastrophic failure in the event of flood or structural collapse.`);
+        });
+
+        // --- ISRO PHASE IV: PIPELINE TOGGLE LOGIC ---
+        document.getElementById('view-sat').addEventListener('click', () => {
+            if(maskOverlayLayer) map.removeLayer(maskOverlayLayer);
+            if(geoJsonLayer) map.removeLayer(geoJsonLayer);
+            
+            document.getElementById('view-sat').style.background = '#3f3f5c';
+            document.getElementById('view-mask').style.background = '#2a2d38';
+            document.getElementById('view-graph').style.background = '#2a2d38';
+        });
+
+        document.getElementById('view-mask').addEventListener('click', () => {
+            if(geoJsonLayer) map.removeLayer(geoJsonLayer);
+            if(maskOverlayLayer) maskOverlayLayer.addTo(map);
+            
+            document.getElementById('view-sat').style.background = '#2a2d38';
+            document.getElementById('view-mask').style.background = '#3f3f5c';
+            document.getElementById('view-graph').style.background = '#2a2d38';
+        });
+
+        document.getElementById('view-graph').addEventListener('click', () => {
+            if(maskOverlayLayer) map.removeLayer(maskOverlayLayer);
+            if(geoJsonLayer) geoJsonLayer.addTo(map);
+            
+            document.getElementById('view-sat').style.background = '#2a2d38';
+            document.getElementById('view-mask').style.background = '#2a2d38';
+            document.getElementById('view-graph').style.background = '#3f3f5c';
         });
     </script>
 </body>
