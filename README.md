@@ -6,9 +6,12 @@
 </div>
 
 > *"Just as a Setu connects two separated lands, our engine mathematically bridges the gaps in occluded satellite imagery to create a unified, navigable network."*
+---
+<center>
+  
+  ### 🔴 [Live Dashboard: S.E.T.U Engine](https://project-s-e-t-u.vercel.app/)
 
-### 🔴 [Live Dashboard: S.E.T.U Engine](https://project-s-e-t-u.vercel.app/)
-
+</center>
 ---
 
 ## 📖 Overview
