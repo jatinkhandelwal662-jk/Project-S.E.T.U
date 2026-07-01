@@ -6,7 +6,23 @@
     <title>Route Resilience Dashboard | S.E.T.U Engine</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <link rel="stylesheet" href="style.css" />
+    <style>
+    /* Force the metrics header to be exactly 4 equal columns on one line */
+    .metrics-header {
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 15px !important;
+        width: 100% !important;
+    }
+    
+    /* Ensure the cards fill their specific column cleanly */
+    .metric-card {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+</style>
 </head>
+
 <body>
 
     <aside id="sidebar">
