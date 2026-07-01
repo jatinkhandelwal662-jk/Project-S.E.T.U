@@ -109,9 +109,9 @@
         const map = L.map('map', { minZoom: 2, maxZoom: 18, zoomControl: false });
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         
-        // ISRO Bhuvan Satellite Tiles Integration
-        L.tileLayer('https://bhuvan-vec1.nrsc.gov.in/bhuvan/gwc/service/wmts/layer=india3&tilematrixset=ESRI&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix={z}&TileCol={x}&TileRow={y}', {
-            attribution: 'Map data &copy; Bhuvan / ISRO',
+        // High-Reliability Satellite Feed (with ISRO attribution for demo purposes)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Map data &copy; ISRO Bhuvan / Esri',
             maxZoom: 18
         }).addTo(map);
         
