@@ -8,6 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import networkx as nx
 from pydantic import BaseModel
 import requests
+import base64
+from io import BytesIO
+from PIL import Image
 
 from graph_engine import extract_criticality_from_mask, calculate_impact_metrics
 from model import AttentionUNet
@@ -131,7 +134,7 @@ async def process_mask(
         # Resize the 256x256 mask back to the 512x512 tile size
         probabilities_resized = F.interpolate(probabilities, size=(512, 512), mode='bilinear', align_corners=False)
         
-        # Threshold to create the binary mask (using 0.4 to capture slightly weaker roads)
+        # Threshold to create the binary mask
         mask_np = (probabilities_resized > 0.4).float().cpu().squeeze().numpy().astype(np.uint8)
             
     # 3. EDGE CASE: Blank Image / No Roads    
@@ -144,6 +147,13 @@ async def process_mask(
     
     # 4. Topology Extraction    
     graph, centrality_scores = extract_criticality_from_mask(mask_np)        
+
+    # --- ISRO PHASE IV: GENERATE BASE64 AI MASK FOR FRONTEND TOGGLE ---
+    mask_pil = Image.fromarray((mask_np * 255).astype(np.uint8))
+    buffered = BytesIO()
+    mask_pil.save(buffered, format="PNG")
+    mask_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+    # ------------------------------------------------------------------
     
     # 5. Save State for Disaster Simulation    
     DEMO_STATE["graph"] = graph.copy()    
@@ -152,7 +162,8 @@ async def process_mask(
     
     return {        
         "network": build_geojson_from_graph(graph, centrality_scores, DEMO_STATE["bounds"]),         
-        "resilience_index": 100.0,        
+        "resilience_index": 100.0,
+        "raw_mask_b64": mask_b64, # Send the vision mask to the dashboard
         "status": "success"    
     }
 
@@ -194,3 +205,4 @@ async def ablate_edge(req: EdgeAblationRequest):
         "impact_delta": impact_delta,        
         "status": "success"    
     }
+    
