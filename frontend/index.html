@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Route Resilience Dashboard S.E.T.U Engine</title>
+    <title>Route Resilience Dashboard | S.E.T.U Engine</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <link rel="stylesheet" href="style.css" />
 </head>
@@ -11,7 +11,7 @@
 
     <aside id="sidebar">
         <div class="brand">
-            <h2>Project_S.E.T.U Engine</h2>
+            <h2>S.E.T.U Engine</h2>
             <p class="subtitle">ISRO Geospatial Command</p>
             <p class="help-text" style="margin-top: 10px; border-bottom: 1px solid #2a2d38; padding-bottom: 15px;">
                 AI-driven analysis for extreme terrain. Search for a region to autonomously fetch satellite feeds, map roads, and simulate disaster resilience.
@@ -50,19 +50,24 @@
     <main id="main-content">
         <header class="metrics-header">
             <div class="metric-card">
+                <span class="label">Model Accuracy (IoU)</span>
+                <span class="value" id="iou-val" style="color: var(--accent-cyan);">Loading...</span>
+                <span class="help-text" style="font-size: 11px;">Evaluation Metric</span>
+            </div>
+            <div class="metric-card">
                 <span class="label">System Status</span>
-                <span class="value" id="sys-status" style="color: var(--accent-cyan);">Standby</span>
+                <span class="value" id="sys-status">Standby</span>
                 <span class="help-text" style="font-size: 11px;">Awaiting satellite feed</span>
             </div>
             <div class="metric-card">
-                <span class="label">Network Resilience Index</span>
+                <span class="label">Resilience Index</span>
                 <span class="value" id="resilience-val" style="color: var(--text-secondary);">--</span>
                 <span class="help-text" style="font-size: 11px;">Overall vulnerability score</span>
             </div>
             <div class="metric-card">
-                <span class="label">Infrastructure Nodes Found</span>
+                <span class="label">Nodes Found</span>
                 <span class="value" id="stat-edges" style="color: var(--text-secondary);">0</span>
-                <span class="help-text" style="font-size: 11px;">Total interconnected routes</span>
+                <span class="help-text" style="font-size: 11px;">Interconnected routes</span>
             </div>
         </header>
 
@@ -98,11 +103,16 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // API Base pointed to your Live Hugging Face Space
+        const API_BASE = "https://jaitn9876-project-s-e-t-u-backend.hf.space";
+
         const map = L.map('map', { minZoom: 2, maxZoom: 18, zoomControl: false });
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri'
+        // ISRO Bhuvan Satellite Tiles Integration
+        L.tileLayer('https://bhuvan-vec1.nrsc.gov.in/bhuvan/gwc/service/wmts/layer=india3&tilematrixset=ESRI&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix={z}&TileCol={x}&TileRow={y}', {
+            attribution: 'Map data &copy; Bhuvan / ISRO',
+            maxZoom: 18
         }).addTo(map);
         
         let geoJsonLayer = null;
@@ -110,6 +120,17 @@
 
         // Set initial view to New Delhi
         map.setView([28.5355, 77.1558], 13);
+
+        // Fetch Metrics on Load
+        fetch(`${API_BASE}/api/metrics`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('iou-val').innerText = (data.iou_score * 100).toFixed(2) + "%";
+            })
+            .catch(err => {
+                document.getElementById('iou-val').innerText = "Offline";
+                document.getElementById('iou-val').style.color = "var(--accent-red)";
+            });
 
         function getRouteColor(score) {
             return score > 0.8 ? '#ff1744' : score > 0.5 ? '#ff9100' : score > 0.2 ? '#ffea00' : '#00e5ff';
@@ -124,14 +145,12 @@
             if(list.children.length > 5) list.removeChild(list.lastChild);
         }
 
-        // --- NEW: GEOCODING SEARCH SYSTEM ---
         document.getElementById('search-btn').addEventListener('click', async () => {
             const query = document.getElementById('location-search').value;
             if(!query) return;
             
             logAlert(`Querying geocoding registry for: ${query}`, "system");
             try {
-                // OpenStreetMap Geocoding API (Proxy for Bhuvan API during demo)
                 const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
                 const data = await response.json();
                 
@@ -171,7 +190,6 @@
             const centerLat = parseFloat(document.getElementById('target-lat').value);
             const centerLon = parseFloat(document.getElementById('target-lon').value);
             
-            // Calculate a ~1km bounding box footprint
             const offset = 0.005; 
             const dynamicBounds = [
                 [centerLat - offset, centerLon - offset], 
@@ -194,8 +212,8 @@
             const loadingStory = runLoadingSequence();
 
             try {
-                // Backend now fetches the image autonomously without file uploads
-                const response = await fetch('https://jaitn9876-project-s-e-t-u-backend.hf.space/api/process-satellite-mask', { method: 'POST', body: formData });
+                // Using API_BASE for cloud execution
+                const response = await fetch(`${API_BASE}/api/process-satellite-mask`, { method: 'POST', body: formData });
                 
                 if (!response.ok) throw new Error("Backend Error");
                 const data = await response.json();
@@ -212,7 +230,7 @@
                 document.getElementById('sys-status').style.color = 'var(--accent-green)';
                 logAlert("Network mapped successfully. Ready for Disaster Simulation.", "system");
             } catch(e) { 
-                alert("Pipeline execution failed. Ensure python api.py is running on port 8080."); 
+                alert("Pipeline execution failed. Ensure backend is running."); 
                 document.getElementById('sys-status').innerText = "Offline";
                 document.getElementById('sys-status').style.color = 'var(--accent-red)';
             } finally { 
@@ -250,7 +268,6 @@
             geoJsonLayer = L.geoJSON(geojsonData, {
                 style: f => ({ color: getRouteColor(f.properties.criticality_score), weight: 5, opacity: 0.9 }),
                 onEachFeature: (feature, layer) => {
-                    // Stop event bubbling directly in the click event
                     layer.on('click', async (e) => {
                         L.DomEvent.stopPropagation(e);
                         
@@ -260,7 +277,8 @@
                         document.getElementById('sys-status').style.color = 'var(--accent-red)';
                         logAlert(`CRITICAL: Infrastructure failure simulated. Rerouting traffic...`, "critical");
 
-                        const res = await fetch('https://jaitn9876-project-s-e-t-u-backend.hf.space/api/ablate-edge', {
+                        // Using API_BASE for cloud execution
+                        const res = await fetch(`${API_BASE}/api/ablate-edge`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
