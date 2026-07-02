@@ -1,52 +1,75 @@
 import os
-import torch
-from torch.utils.data import Dataset
-import cv2
+import json
 import numpy as np
+import rasterio.features
+from shapely.geometry import shape
+from PIL import Image
+from torch.utils.data import Dataset
+import glob
 
-class RoadDataset(Dataset):
-    """
-    Custom Dataset to load DeepGlobe satellite image patches and masks.
-    Handles OpenCV NumPy arrays to integrate seamlessly with Albumentations.
-    """
+class UniversalRoadDataset(Dataset):
     def __init__(self, data_dir, transform=None):
         self.data_dir = data_dir
         self.transform = transform
         
-        all_files = os.listdir(data_dir)
-        self.images = sorted([f for f in all_files if f.endswith('_sat.jpg')])
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, index):
-        img_name = self.images[index]
-        mask_name = img_name.replace('_sat.jpg', '_mask.png')
+        # 1. Find all RGB images (Works for both SpaceNet and OpenSatMap formats)
+        self.image_files = sorted(glob.glob(os.path.join(data_dir, '**/*PS-RGB*.tif'), recursive=True))
         
-        img_path = os.path.join(self.data_dir, img_name)
-        mask_path = os.path.join(self.data_dir, mask_name)
+        # 2. Map GeoJSON masks (For Mumbai SpaceNet Data)
+        geojson_files = glob.glob(os.path.join(data_dir, '**/*.geojson'), recursive=True)
+        self.geojson_map = {os.path.basename(f).split('_chip')[-1].replace('.geojson', ''): f for f in geojson_files}
         
-        # Load via OpenCV for Albumentations compatibility
-        image = cv2.imread(img_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        # 3. Map TIFF masks (For Delhi/Chennai OpenSatMap Data)
+        tif_mask_files = glob.glob(os.path.join(data_dir, '**/*GT*.tif'), recursive=True)
+        self.tif_mask_map = {os.path.basename(f).split('_chip')[-1].replace('_GT.tif', ''): f for f in tif_mask_files}
+        
+        print(f"✅ Indexed {len(self.image_files)} images in {os.path.basename(data_dir)}")
 
-        # Apply the ISRO Extreme Terrain transformations
+    def geojson_to_mask(self, geojson_path, shape_size):
+        with open(geojson_path, 'r') as f:
+            data = json.load(f)
+        
+        geoms = [shape(feature['geometry']) for feature in data.get('features', [])]
+        if not geoms: 
+            return np.zeros(shape_size, dtype=np.uint8)
+            
+        mask = rasterio.features.rasterize(geoms, out_shape=shape_size, fill=0, default_value=1)
+        return mask
+
+    def __getitem__(self, idx):
+        img_path = self.image_files[idx]
+        
+        # Extract the unique chip ID, handling both naming conventions
+        base_name = os.path.basename(img_path)
+        if '_chip' in base_name:
+            chip_id = base_name.split('_chip')[-1].replace('.tif', '').replace('_PS-RGB', '')
+        else:
+            chip_id = base_name.replace('.tif', '').replace('_PS-RGB', '')
+            
+        # Load Image
+        image = Image.open(img_path).convert('RGB')
+        img_width, img_height = image.size 
+        
+        # Smart Label Loading: Try GeoJSON first, then TIF, then fallback to blank
+        if chip_id in self.geojson_map:
+            mask = self.geojson_to_mask(self.geojson_map[chip_id], shape_size=(img_height, img_width))
+            mask = (mask * 255).astype(np.uint8)
+        elif chip_id in self.tif_mask_map:
+            mask_img = Image.open(self.tif_mask_map[chip_id]).convert('L')
+            mask = np.array(mask_img)
+        else:
+            mask = np.zeros((img_height, img_width), dtype=np.uint8)
+            
+        mask = Image.fromarray(mask)
+        
+        # Apply ISRO augmentations
         if self.transform:
-            augmented = self.transform(image=image, mask=mask)
+            augmented = self.transform(image=np.array(image), mask=np.array(mask))
             image = augmented['image']
             mask = augmented['mask']
             
-            # Extract mask correctly if ToTensorV2 was applied
-            if isinstance(mask, torch.Tensor):
-                mask = mask.unsqueeze(0).float() / 255.0
-        else:
-            # Fallback if no transforms are used
-            image = torch.tensor(image, dtype=torch.float32).permute(2, 0, 1) / 255.0
-            mask = torch.tensor(mask, dtype=torch.float32).unsqueeze(0) / 255.0
+        # Ensure mask is scaled 0-1 for BCE Loss
+        return image, mask.float().unsqueeze(0) / 255.0
 
-        # Ensure mask is strictly binary
-        mask[mask > 0.5] = 1.0
-        mask[mask <= 0.5] = 0.0
-
-        return image, mask
+    def __len__(self):
+        return len(self.image_files)
