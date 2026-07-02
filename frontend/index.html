@@ -3,30 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Route Resilience Dashboard | S.E.T.U Engine</title>
+    <title>Route Resilience Dashboard | TARS Engine</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-    <link rel="icon" href="favicon.png" type="image/png">
     <link rel="stylesheet" href="style.css" />
-    <style>
-    .metrics-header {
-        display: grid !important;
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 15px !important;
-        width: 100% !important;
-    }
-    .metric-card {
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    </style>
+    <link rel="shortcut icon" href="favicon.png" type="image/png">
 </head>
-
 <body>
 
     <aside id="sidebar">
         <div class="brand">
             <h2>S.E.T.U Engine</h2>
-            <p class="subtitle">ISRO Geospatial Command</p>
+            <p class="subtitle">ISRO GEOSPATIAL COMMAND</p>
             <p class="help-text" style="margin-top: 10px; border-bottom: 1px solid #2a2d38; padding-bottom: 15px;">
                 AI-driven analysis for extreme terrain. Search for a region to autonomously fetch satellite feeds, map roads, and simulate disaster resilience.
             </p>
@@ -37,14 +24,14 @@
             <p class="help-text">Enter a village/city name or exact coordinates to acquire the orbital feed.</p>
             
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <input type="text" id="location-search" placeholder="e.g., Bengaluru, India" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
+                <input type="text" id="location-search" placeholder="e.g., Delhi" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
                 <button id="search-btn" style="width: 80px; padding: 8px; font-size: 13px;">Search</button>
             </div>
 
             <h4 style="margin-top: 15px; margin-bottom: 5px; color: var(--accent-cyan);">Target Coordinates</h4>
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <input type="number" id="target-lat" value="28.5355" step="0.0001" placeholder="Latitude" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
-                <input type="number" id="target-lon" value="77.1558" step="0.0001" placeholder="Longitude" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
+                <input type="number" id="target-lat" value="28.61494" step="0.0001" placeholder="Latitude" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
+                <input type="number" id="target-lon" value="77.02276" step="0.0001" placeholder="Longitude" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
             </div>
             
             <h3 style="margin-top: 20px;">Step 2: AI Processing</h3>
@@ -55,20 +42,17 @@
                 <p id="loading-text" style="color: var(--accent-cyan); font-weight: 600;">Acquiring Feed...</p>
             </div>
 
-            <div class="widget" id="pipeline-layers" style="margin-top: 20px; display: none; padding: 0;">
-                <h3 style="color: var(--accent-cyan);">Pipeline Stages</h3>
-                <p class="help-text">Toggle views to match ISRO Phase IV specifications.</p>
-                <button id="view-sat" style="width: 100%; margin-bottom: 8px; background: #3f3f5c; color: white; border: 1px solid #5a5a7a;">1. Satellite View</button>
-                <button id="view-mask" style="width: 100%; margin-bottom: 8px; background: #2a2d38; color: white; border: 1px solid #5a5a7a;">2. AI Extraction Mask</button>
-                <button id="view-graph" style="width: 100%; margin-bottom: 8px; background: #2a2d38; color: white; border: 1px solid #5a5a7a;">3. Criticality Graph</button>
+            <div id="pipeline-stages" class="hidden" style="margin-top: 20px; border-top: 1px solid #2a2d38; padding-top: 15px;">
+                <h4 style="color: var(--accent-cyan); margin-bottom: 5px;">Pipeline Stages</h4>
+                <p class="help-text" style="margin-bottom: 10px;">Toggle views to match ISRO Phase IV specifications.</p>
+                
+                <button id="btn-sat" style="margin-bottom: 5px; background-color: #2a2d38; border: 1px solid #3f3f5c;">1. Satellite View</button>
+                <button id="btn-mask" style="margin-bottom: 5px; background-color: #2a2d38; border: 1px solid #3f3f5c;">2. AI Extraction Mask</button>
+                <button id="btn-graph" style="margin-bottom: 5px; background-color: var(--accent-cyan); color: #0f172a; border: none;">3. Criticality Graph</button>
             </div>
             
-            <button id="export-btn" class="hidden" style="background-color: #2a2d38; color: var(--accent-cyan); margin-top: 15px; border: 1px solid #3f3f5c; width: 100%;">
+            <button id="export-btn" class="hidden" style="background-color: #2a2d38; color: var(--accent-cyan); margin-top: 15px; border: 1px solid #3f3f5c;">
                 ⬇️ Export Map to QGIS
-            </button>
-
-            <button id="report-btn" class="hidden" style="background-color: #2a2d38; color: var(--accent-cyan); margin-top: 10px; border: 1px solid #3f3f5c; width: 100%;">
-                📊 Generate Resilience Report
             </button>
         </div>
     </aside>
@@ -76,24 +60,19 @@
     <main id="main-content">
         <header class="metrics-header">
             <div class="metric-card">
-                <span class="label">Model Accuracy (IoU)</span>
-                <span class="value" id="iou-val" style="color: var(--accent-cyan);">Loading...</span>
-                <span class="help-text" style="font-size: 11px;">Evaluation Metric</span>
-            </div>
-            <div class="metric-card">
                 <span class="label">System Status</span>
-                <span class="value" id="sys-status">Standby</span>
+                <span class="value" id="sys-status" style="color: var(--accent-cyan);">Standby</span>
                 <span class="help-text" style="font-size: 11px;">Awaiting satellite feed</span>
             </div>
             <div class="metric-card">
-                <span class="label">Resilience Index</span>
+                <span class="label">Network Resilience Index</span>
                 <span class="value" id="resilience-val" style="color: var(--text-secondary);">--</span>
                 <span class="help-text" style="font-size: 11px;">Overall vulnerability score</span>
             </div>
             <div class="metric-card">
-                <span class="label">Nodes Found</span>
+                <span class="label">Infrastructure Nodes Found</span>
                 <span class="value" id="stat-edges" style="color: var(--text-secondary);">0</span>
-                <span class="help-text" style="font-size: 11px;">Interconnected routes</span>
+                <span class="help-text" style="font-size: 11px;">Total interconnected routes</span>
             </div>
         </header>
 
@@ -129,32 +108,36 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const API_BASE = "https://jaitn9876-project-s-e-t-u-backend.hf.space";
+        // --- HUGGING FACE BACKEND CONFIGURATION ---
+        // Added trailing slashes to guarantee clean routing behind the cloud proxy layer
+        const BACKEND_URL = "https://jaitn9876-project-s-e-t-u-backend.hf.space";
 
-        const map = L.map('map', { minZoom: 2, maxZoom: 18, zoomControl: false });
+        // --- INDIA GEOFENCE CONFIGURATION ---
+        const indiaBounds = L.latLngBounds(
+            [6.5, 68.1], 
+            [35.5, 97.4] 
+        );
+
+        const map = L.map('map', { 
+            minZoom: 4, 
+            maxZoom: 18, 
+            zoomControl: false,
+            maxBounds: indiaBounds,
+            maxBoundsViscosity: 1.0 
+        });
+        
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Map data &copy; ISRO Bhuvan / Esri',
-            maxZoom: 18
+            attribution: 'Tiles &copy; Esri'
         }).addTo(map);
         
         let geoJsonLayer = null;
+        let maskOverlayLayer = null;
         let latestGeoJSON = null; 
-        let maskOverlayLayer = null; 
-        let currentBounds = null; 
+        let currentDynamicBounds = null;
 
-        map.setView([28.5355, 77.1558], 13);
-
-        fetch(`${API_BASE}/api/metrics`)
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('iou-val').innerText = (data.iou_score * 100).toFixed(2) + "%";
-            })
-            .catch(err => {
-                document.getElementById('iou-val').innerText = "Offline";
-                document.getElementById('iou-val').style.color = "var(--accent-red)";
-            });
+        map.setView([28.6149, 77.0227], 13);
 
         function getRouteColor(score) {
             return score > 0.8 ? '#ff1744' : score > 0.5 ? '#ff9100' : score > 0.2 ? '#ffea00' : '#00e5ff';
@@ -185,6 +168,7 @@
                     document.getElementById('target-lat').value = lat.toFixed(5);
                     document.getElementById('target-lon').value = lon.toFixed(5);
                     
+                    map.setMaxBounds(indiaBounds);
                     map.flyTo([lat, lon], 15, { duration: 1.5 });
                     logAlert(`Coordinates locked: ${lat.toFixed(4)}, ${lon.toFixed(4)}`, "system");
                 } else {
@@ -206,7 +190,7 @@
             ];
             for(let i=0; i<states.length; i++) {
                 textEl.innerText = states[i];
-                await new Promise(r => setTimeout(r, 800)); 
+                await new Promise(r => setTimeout(r, 600)); 
             }
         }
 
@@ -215,73 +199,62 @@
             const centerLon = parseFloat(document.getElementById('target-lon').value);
             
             const offset = 0.005; 
-            const dynamicBounds = [
+            currentDynamicBounds = L.latLngBounds(
                 [centerLat - offset, centerLon - offset], 
                 [centerLat + offset, centerLon + offset]  
-            ];
+            );
+
+            map.fitBounds(currentDynamicBounds, { padding: [0,0] });
+            map.setMaxBounds(currentDynamicBounds);
 
             const formData = new FormData();
-            formData.append("min_lat", dynamicBounds[0][0]);
-            formData.append("max_lat", dynamicBounds[1][0]);
-            formData.append("min_lon", dynamicBounds[0][1]);
-            formData.append("max_lon", dynamicBounds[1][1]);
-
-            map.flyToBounds(dynamicBounds, { duration: 1.5 });
+            formData.append("min_lat", currentDynamicBounds.getSouth());
+            formData.append("max_lat", currentDynamicBounds.getNorth());
+            formData.append("min_lon", currentDynamicBounds.getWest());
+            formData.append("max_lon", currentDynamicBounds.getEast());
 
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('export-btn').classList.add('hidden'); 
-            document.getElementById('report-btn').classList.add('hidden'); 
-            document.getElementById('pipeline-layers').style.display = 'none';
+            document.getElementById('pipeline-stages').classList.add('hidden');
+            
             document.getElementById('sys-status').innerText = "Acquiring Feed...";
             document.getElementById('sys-status').style.color = 'var(--accent-orange)';
             
             const loadingStory = runLoadingSequence();
 
             try {
-                const response = await fetch(`${API_BASE}/api/process-satellite-mask`, { method: 'POST', body: formData });
+                // Pointing to the secure cloud endpoint route
+                const response = await fetch(`${BACKEND_URL}/api/process-satellite-mask`, { 
+                    method: 'POST', 
+                    body: formData 
+                });
                 
-                if (!response.ok) throw new Error("Backend Error");
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`HTTP Error Status: ${response.status} - ${errText.substring(0, 100)}`);
+                }
+                
                 const data = await response.json();
                 
                 if (data.error) {
-                    alert(data.error);
-                    throw new Error(data.error);
+                    throw new Error(`Backend Application Error: ${data.error}`);
                 }
 
                 await loadingStory; 
-
-                // ISRO PHASE IV: Store bounds and generate the AI Mask Overlay
-                currentBounds = dynamicBounds;
-                if (maskOverlayLayer) map.removeLayer(maskOverlayLayer);
-                
-                if (data.raw_mask_b64) {
-                    maskOverlayLayer = L.imageOverlay('data:image/png;base64,' + data.raw_mask_b64, currentBounds, {
-                        opacity: 0.85, 
-                        interactive: false 
-                    });
-                }
-
                 renderNetwork(data);
                 
                 document.getElementById('sys-status').innerText = "Live / Stable";
                 document.getElementById('sys-status').style.color = 'var(--accent-green)';
+                document.getElementById('pipeline-stages').classList.remove('hidden');
                 logAlert("Network mapped successfully. Ready for Disaster Simulation.", "system");
-
-                // Enable Actionable Toggles and Reports
-                if(data.status !== "empty_terrain") {
-                    document.getElementById('pipeline-layers').style.display = 'block';
-                    document.getElementById('report-btn').classList.remove('hidden');
-                    
-                    // Reset toggles to show graph by default
-                    document.getElementById('view-sat').style.background = '#2a2d38';
-                    document.getElementById('view-mask').style.background = '#2a2d38';
-                    document.getElementById('view-graph').style.background = '#3f3f5c';
-                }
-
             } catch(e) { 
-                alert("Pipeline execution failed. Ensure backend is running."); 
+                console.error("Pipeline Breakdown Trace:", e);
                 document.getElementById('sys-status').innerText = "Offline";
                 document.getElementById('sys-status').style.color = 'var(--accent-red)';
+                
+                // Detailed screen readout instead of generic error walls
+                logAlert(`FAIL: ${e.message}`, "critical");
+                alert(`Pipeline Error Diagnostic:\n\n${e.message}\n\n1. Check your F12 console tab.\n2. Ensure your Hugging Face Space is status "Running" and not sleeping.`);
             } finally { 
                 document.getElementById('loading-spinner').classList.add('hidden'); 
             }
@@ -292,6 +265,8 @@
             
             if (responseData.status === "empty_terrain" || geojsonData.features.length === 0) {
                 if (geoJsonLayer) map.removeLayer(geoJsonLayer);
+                if (maskOverlayLayer) map.removeLayer(maskOverlayLayer);
+                
                 document.getElementById('stat-edges').innerText = "0";
                 document.getElementById('resilience-val').innerText = "0%";
                 document.getElementById('resilience-val').style.color = 'var(--accent-red)';
@@ -299,8 +274,6 @@
                 document.getElementById('sys-status').style.color = 'var(--accent-orange)';
                 logAlert("WARNING: Zero viable infrastructure detected in this terrain sector.", "critical");
                 document.getElementById('export-btn').classList.add('hidden');
-                document.getElementById('report-btn').classList.add('hidden');
-                document.getElementById('pipeline-layers').style.display = 'none';
                 return; 
             }
 
@@ -308,7 +281,13 @@
             latestGeoJSON = geojsonData;
             document.getElementById('export-btn').classList.remove('hidden');
 
+            if (maskOverlayLayer) map.removeLayer(maskOverlayLayer);
+            if (responseData.raw_mask_b64) {
+                maskOverlayLayer = L.imageOverlay("data:image/png;base64," + responseData.raw_mask_b64, currentDynamicBounds, { opacity: 0.85, zIndex: 100 });
+            }
+
             if (geoJsonLayer) map.removeLayer(geoJsonLayer);
+            
             document.getElementById('stat-edges').innerText = geojsonData.features.length;
             document.getElementById('stat-edges').style.color = 'var(--text-primary)';
             
@@ -319,40 +298,65 @@
             geoJsonLayer = L.geoJSON(geojsonData, {
                 style: f => ({ color: getRouteColor(f.properties.criticality_score), weight: 5, opacity: 0.9 }),
                 onEachFeature: (feature, layer) => {
-                    // ACTIONABLE DATA: Add hover tooltip for non-technical planners
-                    const score = (feature.properties.criticality_score * 100).toFixed(1);
-                    layer.bindTooltip(`Criticality Index: ${score}%`, {sticky: true});
-
                     layer.on('click', async (e) => {
                         L.DomEvent.stopPropagation(e);
-                        
                         layer.setStyle({ color: '#3f3f5c', dashArray: '5, 10', weight: 2 });
                         
                         document.getElementById('sys-status').innerText = "Recalculating...";
                         document.getElementById('sys-status').style.color = 'var(--accent-red)';
                         logAlert(`CRITICAL: Infrastructure failure simulated. Rerouting traffic...`, "critical");
 
-                        const res = await fetch(`${API_BASE}/api/ablate-edge`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                n1_y: feature.properties.pixel_n1[0], n1_x: feature.properties.pixel_n1[1],
-                                n2_y: feature.properties.pixel_n2[0], n2_x: feature.properties.pixel_n2[1]
-                            })
-                        });
-                        
-                        const result = await res.json();
-                        renderNetwork(result);
-                        
-                        document.getElementById('sys-status').innerText = "Degraded Mode";
-                        document.getElementById('sys-status').style.color = 'var(--accent-orange)';
-                        
-                        const penalty = result.impact_delta !== undefined ? result.impact_delta.toFixed(1) : "0.0";
-                        logAlert(`SYSTEM IMPACT: Emergency response time increased by +${penalty}%`, "critical");
+                        try {
+                            const res = await fetch(`${BACKEND_URL}/api/ablate-edge`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    n1_y: feature.properties.pixel_n1[0], n1_x: feature.properties.pixel_n1[1],
+                                    n2_y: feature.properties.pixel_n2[0], n2_x: feature.properties.pixel_n2[1]
+                                })
+                            });
+                            
+                            if (!res.ok) throw new Error(`Ablation Failed: Status ${res.status}`);
+                            const result = await res.json();
+                            renderNetwork(result);
+                            
+                            document.getElementById('sys-status').innerText = "Degraded Mode";
+                            document.getElementById('sys-status').style.color = 'var(--accent-orange)';
+                            
+                            const penalty = result.impact_delta !== undefined ? result.impact_delta.toFixed(1) : "0.0";
+                            logAlert(`SYSTEM IMPACT: Emergency response time increased by +${penalty}%`, "critical");
+                        } catch(err) {
+                            logAlert(`Ablation Connection Error: ${err.message}`, "critical");
+                        }
                     });
                 }
             }).addTo(map);
+            
+            setPipelineView('graph');
         }
+
+        function setPipelineView(viewType) {
+            document.getElementById('btn-sat').style.cssText = "margin-bottom: 5px; background-color: #2a2d38; border: 1px solid #3f3f5c; color: white;";
+            document.getElementById('btn-mask').style.cssText = "margin-bottom: 5px; background-color: #2a2d38; border: 1px solid #3f3f5c; color: white;";
+            document.getElementById('btn-graph').style.cssText = "margin-bottom: 5px; background-color: #2a2d38; border: 1px solid #3f3f5c; color: white;";
+
+            if(maskOverlayLayer) map.removeLayer(maskOverlayLayer);
+            if(geoJsonLayer) map.removeLayer(geoJsonLayer);
+
+            if (viewType === 'sat') {
+                document.getElementById('btn-sat').style.cssText = "margin-bottom: 5px; background-color: var(--accent-cyan); color: #0f172a; border: none;";
+            } else if (viewType === 'mask') {
+                document.getElementById('btn-mask').style.cssText = "margin-bottom: 5px; background-color: var(--accent-cyan); color: #0f172a; border: none;";
+                if(maskOverlayLayer) map.addLayer(maskOverlayLayer);
+            } else if (viewType === 'graph') {
+                document.getElementById('btn-graph').style.cssText = "margin-bottom: 5px; background-color: var(--accent-cyan); color: #0f172a; border: none;";
+                if(geoJsonLayer) map.addLayer(geoJsonLayer);
+            }
+        }
+
+        document.getElementById('btn-sat').addEventListener('click', () => setPipelineView('sat'));
+        document.getElementById('btn-mask').addEventListener('click', () => setPipelineView('mask'));
+        document.getElementById('btn-graph').addEventListener('click', () => setPipelineView('graph'));
 
         document.getElementById('process-btn').addEventListener('click', executePipeline);
         
@@ -366,40 +370,6 @@
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
             logAlert("GeoJSON payload exported for QGIS integration.", "system");
-        });
-
-        // --- ISRO PHASE IV: ACTIONABLE REPORT BUTTON ---
-        document.getElementById('report-btn').addEventListener('click', () => {
-            const resVal = document.getElementById('resilience-val').innerText;
-            alert(`Strategic Planning Report:\n\nSector Resilience Index: ${resVal}\n\nThis sector is currently rated as a 'Critical Bottleneck' zone. Immediate hardening of the highlighted high-criticality links is recommended to prevent catastrophic failure in the event of flood or structural collapse.`);
-        });
-
-        // --- ISRO PHASE IV: PIPELINE TOGGLE LOGIC ---
-        document.getElementById('view-sat').addEventListener('click', () => {
-            if(maskOverlayLayer) map.removeLayer(maskOverlayLayer);
-            if(geoJsonLayer) map.removeLayer(geoJsonLayer);
-            
-            document.getElementById('view-sat').style.background = '#3f3f5c';
-            document.getElementById('view-mask').style.background = '#2a2d38';
-            document.getElementById('view-graph').style.background = '#2a2d38';
-        });
-
-        document.getElementById('view-mask').addEventListener('click', () => {
-            if(geoJsonLayer) map.removeLayer(geoJsonLayer);
-            if(maskOverlayLayer) maskOverlayLayer.addTo(map);
-            
-            document.getElementById('view-sat').style.background = '#2a2d38';
-            document.getElementById('view-mask').style.background = '#3f3f5c';
-            document.getElementById('view-graph').style.background = '#2a2d38';
-        });
-
-        document.getElementById('view-graph').addEventListener('click', () => {
-            if(maskOverlayLayer) map.removeLayer(maskOverlayLayer);
-            if(geoJsonLayer) geoJsonLayer.addTo(map);
-            
-            document.getElementById('view-sat').style.background = '#2a2d38';
-            document.getElementById('view-mask').style.background = '#2a2d38';
-            document.getElementById('view-graph').style.background = '#3f3f5c';
         });
     </script>
 </body>
