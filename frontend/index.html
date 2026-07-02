@@ -6,7 +6,7 @@
     <title>Route Resilience Dashboard | TARS Engine</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <link rel="stylesheet" href="style.css" />
-    <link rel="shortcut icon" href="favicon.png" type="image/png">
+    <link rel="shortcut icon" href="favicon_ISRO (2).png" type="image/png">
 </head>
 <body>
 
@@ -110,10 +110,7 @@
     <script>
         const BACKEND_URL = "https://jaitn9876-project-s-e-t-u-backend.hf.space";
 
-        const indiaBounds = L.latLngBounds(
-            [6.5, 68.1], 
-            [35.5, 97.4] 
-        );
+        const indiaBounds = L.latLngBounds([6.5, 68.1], [35.5, 97.4]);
 
         const map = L.map('map', { 
             minZoom: 4, 
@@ -131,10 +128,34 @@
         
         let geoJsonLayer = null;
         let maskOverlayLayer = null;
+        let blackoutLayer = null;
         let latestGeoJSON = null; 
         let currentDynamicBounds = null;
 
         map.setView([28.6149, 77.0227], 13);
+
+        // --- THE FIX: DYNAMIC BLACKOUT CURTAIN ---
+        function applyBlackoutCurtain(bounds) {
+            if (blackoutLayer) map.removeLayer(blackoutLayer);
+            
+            // Giant polygon covering the earth
+            const worldCoords = [ [-90, -180], [90, -180], [90, 180], [-90, 180] ];
+            // Cut a square hole exactly where the AI processed the data
+            const holeCoords = [
+                [bounds.getSouth(), bounds.getWest()],
+                [bounds.getNorth(), bounds.getWest()],
+                [bounds.getNorth(), bounds.getEast()],
+                [bounds.getSouth(), bounds.getEast()]
+            ];
+
+            blackoutLayer = L.polygon([worldCoords, holeCoords], {
+                color: '#0f172a',
+                fillColor: '#0f172a',
+                fillOpacity: 0.85, // Adjust this to make the outside darker/lighter
+                stroke: false,
+                interactive: false
+            }).addTo(map);
+        }
 
         function getRouteColor(score) {
             return score > 0.8 ? '#ff1744' : score > 0.5 ? '#ff9100' : score > 0.2 ? '#ffea00' : '#00e5ff';
@@ -166,6 +187,8 @@
                     document.getElementById('target-lon').value = lon.toFixed(5);
                     
                     map.setMaxBounds(indiaBounds);
+                    if (blackoutLayer) map.removeLayer(blackoutLayer); // Remove curtain when searching for a new place
+                    
                     map.flyTo([lat, lon], 15, { duration: 1.5 });
                     logAlert(`Coordinates locked: ${lat.toFixed(4)}, ${lon.toFixed(4)}`, "system");
                 } else {
@@ -203,8 +226,8 @@
 
             map.fitBounds(currentDynamicBounds, { padding: [0,0] });
             map.setMaxBounds(currentDynamicBounds);
+            applyBlackoutCurtain(currentDynamicBounds); // Trigger the blackout curtain!
 
-            // --- THE FIX: CLEAN JSON PAYLOAD INSTEAD OF FORMDATA ---
             const payload = {
                 min_lat: currentDynamicBounds.getSouth(),
                 max_lat: currentDynamicBounds.getNorth(),
@@ -222,7 +245,6 @@
             const loadingStory = runLoadingSequence();
 
             try {
-                // --- THE FIX: SENDING APPLICATION/JSON HEADERS ---
                 const response = await fetch(`${BACKEND_URL}/api/process-satellite-mask`, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' },
@@ -236,9 +258,7 @@
                 
                 const data = await response.json();
                 
-                if (data.error) {
-                    throw new Error(`Backend Application Error: ${data.error}`);
-                }
+                if (data.error) throw new Error(`Backend Error: ${data.error}`);
 
                 await loadingStory; 
                 renderNetwork(data);
@@ -253,7 +273,7 @@
                 document.getElementById('sys-status').style.color = 'var(--accent-red)';
                 
                 logAlert(`FAIL: ${e.message}`, "critical");
-                alert(`Pipeline Error Diagnostic:\n\n${e.message}\n\n1. Check your F12 console tab.\n2. Ensure your Hugging Face Space is status "Running" and not sleeping.`);
+                alert(`Pipeline Error Diagnostic:\n\n${e.message}\n\nEnsure Hugging Face Space is "Running".`);
             } finally { 
                 document.getElementById('loading-spinner').classList.add('hidden'); 
             }
@@ -262,7 +282,7 @@
         function renderNetwork(responseData) {
             const geojsonData = responseData.network || responseData;
             
-            if (responseData.status === "empty_terrain" || geojsonData.features.length === 0) {
+            if (responseData.status === "empty_terrain" || !geojsonData.features || geojsonData.features.length === 0) {
                 if (geoJsonLayer) map.removeLayer(geoJsonLayer);
                 if (maskOverlayLayer) map.removeLayer(maskOverlayLayer);
                 
@@ -303,7 +323,7 @@
                         
                         document.getElementById('sys-status').innerText = "Recalculating...";
                         document.getElementById('sys-status').style.color = 'var(--accent-red)';
-                        logAlert(`CRITICAL: Infrastructure failure simulated. Rerouting traffic...`, "critical");
+                        logAlert(`CRITICAL: Infrastructure failure simulated. Recalculating stress...`, "critical");
 
                         try {
                             const res = await fetch(`${BACKEND_URL}/api/ablate-edge`, {
@@ -315,17 +335,27 @@
                                 })
                             });
                             
-                            if (!res.ok) throw new Error(`Ablation Failed: Status ${res.status}`);
+                            if (!res.ok) throw new Error(`Status ${res.status}`);
                             const result = await res.json();
+                            
+                            // --- THE FIX: CRASH PROTECTION ---
+                            // If the cloud memory reset between clicks, catch it gracefully
+                            if (result.error) throw new Error(result.error);
+                            if (result.resilience_index === undefined) result.resilience_index = 0.0;
+                            // ---------------------------------
+                            
                             renderNetwork(result);
                             
                             document.getElementById('sys-status').innerText = "Degraded Mode";
                             document.getElementById('sys-status').style.color = 'var(--accent-orange)';
                             
                             const penalty = result.impact_delta !== undefined ? result.impact_delta.toFixed(1) : "0.0";
-                            logAlert(`SYSTEM IMPACT: Emergency response time increased by +${penalty}%`, "critical");
+                            logAlert(`SYSTEM IMPACT: Surrounding routes bearing +${penalty}% stress`, "critical");
                         } catch(err) {
-                            logAlert(`Ablation Connection Error: ${err.message}`, "critical");
+                            console.error(err);
+                            document.getElementById('sys-status').innerText = "Live / Stable";
+                            document.getElementById('sys-status').style.color = 'var(--accent-green)';
+                            logAlert(`Ablation failed: The server forgot the network graph. Please Re-Initialize.`, "critical");
                         }
                     });
                 }
