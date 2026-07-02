@@ -108,11 +108,8 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // --- HUGGING FACE BACKEND CONFIGURATION ---
-        // Added trailing slashes to guarantee clean routing behind the cloud proxy layer
         const BACKEND_URL = "https://jaitn9876-project-s-e-t-u-backend.hf.space";
 
-        // --- INDIA GEOFENCE CONFIGURATION ---
         const indiaBounds = L.latLngBounds(
             [6.5, 68.1], 
             [35.5, 97.4] 
@@ -207,11 +204,13 @@
             map.fitBounds(currentDynamicBounds, { padding: [0,0] });
             map.setMaxBounds(currentDynamicBounds);
 
-            const formData = new FormData();
-            formData.append("min_lat", currentDynamicBounds.getSouth());
-            formData.append("max_lat", currentDynamicBounds.getNorth());
-            formData.append("min_lon", currentDynamicBounds.getWest());
-            formData.append("max_lon", currentDynamicBounds.getEast());
+            // --- THE FIX: CLEAN JSON PAYLOAD INSTEAD OF FORMDATA ---
+            const payload = {
+                min_lat: currentDynamicBounds.getSouth(),
+                max_lat: currentDynamicBounds.getNorth(),
+                min_lon: currentDynamicBounds.getWest(),
+                max_lon: currentDynamicBounds.getEast()
+            };
 
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('export-btn').classList.add('hidden'); 
@@ -223,10 +222,11 @@
             const loadingStory = runLoadingSequence();
 
             try {
-                // Pointing to the secure cloud endpoint route
+                // --- THE FIX: SENDING APPLICATION/JSON HEADERS ---
                 const response = await fetch(`${BACKEND_URL}/api/process-satellite-mask`, { 
                     method: 'POST', 
-                    body: formData 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload) 
                 });
                 
                 if (!response.ok) {
@@ -252,7 +252,6 @@
                 document.getElementById('sys-status').innerText = "Offline";
                 document.getElementById('sys-status').style.color = 'var(--accent-red)';
                 
-                // Detailed screen readout instead of generic error walls
                 logAlert(`FAIL: ${e.message}`, "critical");
                 alert(`Pipeline Error Diagnostic:\n\n${e.message}\n\n1. Check your F12 console tab.\n2. Ensure your Hugging Face Space is status "Running" and not sleeping.`);
             } finally { 
