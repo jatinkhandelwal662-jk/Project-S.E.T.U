@@ -17,9 +17,9 @@ from topology_loss import ISROCombinedLoss
 from dataset import UniversalRoadDataset
 
 def train_model():
-    # 1. Mount Drive to access datasets and save checkpoints
+    # --- ☁️ AUTO-MOUNT GOOGLE DRIVE ☁️ ---
     if not os.path.exists('/content/drive/MyDrive'):
-        print("☁️ Connecting to Google Drive...")
+        print("☁️ Connecting to Google Drive... Please accept the popup!")
         drive.mount('/content/drive')
 
     DRIVE_SAVE_DIR = '/content/drive/MyDrive/SETU_Checkpoints'
@@ -29,7 +29,7 @@ def train_model():
     CHECKPOINT_PATH = os.path.join(DRIVE_SAVE_DIR, 'setu_universal_model_latest.pth')
     
     # ⚠️ UPDATE THIS LINE to point to exactly where your SpaceNet final weights are saved in your Drive!
-    FOUNDATION_WEIGHTS = '/content/drive/MyDrive/SETU_Checkpoints/spacenet_unet_model_FINAL.pth' 
+    FOUNDATION_WEIGHTS = '/content/drive/MyDrive/SETU_Checkpoints/road_unet_model_FINAL.pth'
     
     EFFECTIVE_BATCH_SIZE = 8 
     ACTUAL_BATCH_SIZE = 1
@@ -57,19 +57,30 @@ def train_model():
 
     print("🔍 Scanning Google Drive for harvested cities...")
     dataset_dir = '/content/drive/MyDrive/SETU_Datasets'
+    
+    if not os.path.exists(dataset_dir):
+        print(f"❌ CRITICAL ERROR: Cannot find {dataset_dir}. Ensure your harvester saved the files here!")
+        return
+
     datasets_to_merge = []
     
-    # Dynamically load every folder that ends in '_fast'
+    # --- THE FIX: DYNAMIC FOLDER SCANNER WITH SAFEGUARDS ---
     for folder_name in os.listdir(dataset_dir):
         if folder_name.endswith('_fast'):
             full_path = os.path.join(dataset_dir, folder_name)
-            print(f"   --> Loading {folder_name.upper()}...")
+            print(f"   --> Checking {folder_name.upper()}...")
+            
             city_data = UniversalRoadDataset(full_path, transform=isro_transform)
+            
+            # Safeguard against empty ghost folders
             if len(city_data) > 0:
                 datasets_to_merge.append(city_data)
+                print(f"       ✅ Indexed {len(city_data)} images from {folder_name}")
+            else:
+                print(f"       ⚠️ Skipping {folder_name} (0 valid images found).")
 
-    if not datasets_to_merge:
-        print("❌ CRITICAL ERROR: No datasets found in SETU_Datasets!")
+    if len(datasets_to_merge) == 0:
+        print("❌ CRITICAL ERROR: All dataset folders were empty. The DataLoader cannot start!")
         return
 
     # Merge them into a single domain-agnostic dataset
@@ -94,9 +105,9 @@ def train_model():
         scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         start_epoch = checkpoint['epoch'] + 1
     elif os.path.exists(FOUNDATION_WEIGHTS):
-        print(f"🚀 Injecting SpaceNet foundation knowledge...")
+        print(f"🚀 Injecting Foundation knowledge...")
         checkpoint = torch.load(FOUNDATION_WEIGHTS, map_location=device, weights_only=True)
-        # Handle difference between full checkpoints and raw state dicts
+        # Smart load depending on how the weights were saved
         if 'model_state_dict' in checkpoint:
             model.load_state_dict(checkpoint['model_state_dict'])
         else:
