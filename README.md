@@ -86,13 +86,45 @@ Instead of a traditional SQL database, S.E.T.U uses **Live Geographic Registries
 To run the S.E.T.U engine locally, you will need two terminal windows to mimic the microservice architecture.
 
 ### 1. Booting the Backend (AI Engine)
+
 ```bash
+
 # Clone the repository
+
 git clone [https://github.com/jatinkhandelwal662-jk/Project-S.E.T.U.git](https://github.com/jatinkhandelwal662-jk/Project-S.E.T.U.git)
+
 cd Project-S.E.T.U/backend
 
+
+
 # Install required ML and API libraries
+
 pip install -r requirements.txt
+
+
 
 # Start the FastAPI inference server
 uvicorn app:app --port 8080
+
+cd frontend
+
+# Launch a local web server
+
+python -m http.server 3000
+
+```
+---
+
+## 👥 Team TARS
+
+Engineered for the Bharatiya Antariksh Hackathon.
+
+* **[Riya Sharma](https://github.com/riyaa8484)**
+
+* **[Khushi Dalal](https://github.com/khushiidalal)**
+
+* **[Jatin Khandelwal](https://github.com/jatinkhandelwal662-jk)**
+
+* **[Bhavishya Bhati](https://github.com/BHAVISHYA-2007)**
+
+
