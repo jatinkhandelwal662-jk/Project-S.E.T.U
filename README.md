@@ -18,6 +18,32 @@ Standard GIS software and traditional CNNs suffer from "spectral blindness." Whe
 
 ---
 
+## 📸 S.E.T.U. in Action (Live Telemetry)
+
+Our Universal Model has been trained on a diverse multi-city dataset to ensure robust extraction across varying topographies, from dense urban grids to complex coastal environments.
+
+### 1. Dense Urban Extraction (Mumbai)
+Showcasing the model's ability to map nearly 8,000 infrastructure nodes across highly complex, intertwined urban environments without dropping the framerate.
+![Dense Urban Extraction - Mumbai](result_1.jpg)
+
+### 2. ISRO Phase IV: AI Binary Extraction Mask (Mumbai)
+The raw TransUNet vision output. By utilizing multi-head self-attention, S.E.T.U pierces through shadows and urban clutter to generate a pure topological skeleton.
+![AI Extraction Mask - Mumbai](result_5.jpg)
+
+### 3. Stable Network Topology (Kalkaji, Delhi)
+High-confidence path extraction and Betweenness Centrality mapping in dense residential sectors, clearly distinguishing major arteries (Yellow/Orange) from peripheral links (Blue).
+![Stable Topology - Delhi](result_3.jpg)
+
+### 4. Disaster Simulation & Cascading Impact (Dwarka, Delhi)
+Live ablation testing in action. A critical route has been severed, triggering an instant traffic reroute and revealing a severe 30.0% drop in the overall Network Resilience Index.
+![Disaster Simulation - Dwarka](result_4.jpg)
+
+### 5. Systemic Vulnerability Mapping (Hyderabad)
+Demonstrating the "Degraded Mode" where the AI surgically recalculates the graph matrix, showing how surrounding secondary routes bear the stress of a collapsed major artery.
+![Systemic Impact - Hyderabad](result_2.jpg)
+
+---
+
 ## ✨ Core Features
 * **Autonomous Target Acquisition:** Direct integration with geocoding registries to autonomously pull orbital tiles (fully compatible with ISRO Bhuvan / Cartosat feeds).
 * **Occlusion-Robust Extraction:** Multi-head self-attention mechanisms maintain road trajectories through extreme urban and terrain clutter.
@@ -49,7 +75,7 @@ Instead of a traditional SQL database, S.E.T.U uses **Live Geographic Registries
 * **Deployment:** Hugging Face Spaces (Dockerized CPU/GPU Container)
 
 **Geospatial Dashboard (Frontend):**
-* **Mapping Engine:** `Leaflet.js`
+* **Mapping Engine:** `Leaflet.js` (Canvas Accelerated)
 * **UI/UX:** HTML5, CSS3, Vanilla JavaScript
 * **Deployment:** Vercel Edge Network
 
@@ -70,18 +96,3 @@ pip install -r requirements.txt
 
 # Start the FastAPI inference server
 uvicorn app:app --port 8080
-
-cd frontend
-
-# Launch a local web server
-python -m http.server 3000
-```
----
-
-## 👥 Team TARS
-Engineered for the Bharatiya Antariksh Hackathon.
-
-* **[Riya Sharma](https://github.com/riyaa8484)**
-* **[Khushi Dalal](https://github.com/khushiidalal)**
-* **[Jatin Khandelwal](https://github.com/jatinkhandelwal662-jk)**
-* **[Bhavishya Bhati](https://github.com/BHAVISHYA-2007)**
