@@ -120,12 +120,15 @@
 
         const indiaBounds = L.latLngBounds([6.5, 68.1], [35.5, 97.4]);
 
+        // THE FRONTEND FIX: preferCanvas: true
+        // This stops the browser from freezing by switching from SVG to hardware-accelerated Canvas rendering.
         const map = L.map('map', { 
             minZoom: 4, 
             maxZoom: 18, 
             zoomControl: false,
             maxBounds: indiaBounds,
-            maxBoundsViscosity: 1.0 
+            maxBoundsViscosity: 1.0,
+            preferCanvas: true 
         });
         
         L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -154,16 +157,10 @@
         }
         fetchModelMetrics();
 
-        // THE FIX: Accurate Winding for Leaflet Hole-Punching
         function applyBlackoutCurtain(bounds) {
             if (blackoutLayer) map.removeLayer(blackoutLayer);
             
-            // Outer ring (clockwise)
-            const worldCoords = [
-                [90, -180], [90, 180], [-90, 180], [-90, -180]
-            ];
-            
-            // Inner ring (counter-clockwise)
+            const worldCoords = [ [90, -180], [90, 180], [-90, 180], [-90, -180] ];
             const holeCoords = [
                 [bounds.getNorth(), bounds.getWest()],
                 [bounds.getNorth(), bounds.getEast()],
