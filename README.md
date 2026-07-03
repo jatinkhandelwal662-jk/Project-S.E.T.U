@@ -24,23 +24,23 @@ Our Universal Model has been trained on a diverse multi-city dataset to ensure r
 
 ### 1. Dense Urban Extraction (Mumbai)
 Showcasing the model's ability to map nearly 8,000 infrastructure nodes across highly complex, intertwined urban environments without dropping the framerate.
-![Dense Urban Extraction - Mumbai](result_1.jpg)
+![Dense Urban Extraction - Mumbai](result_1.png)
 
 ### 2. ISRO Phase IV: AI Binary Extraction Mask (Mumbai)
 The raw TransUNet vision output. By utilizing multi-head self-attention, S.E.T.U pierces through shadows and urban clutter to generate a pure topological skeleton.
-![AI Extraction Mask - Mumbai](result_5.jpg)
+![AI Extraction Mask - Mumbai](result_5.png)
 
 ### 3. Stable Network Topology (Kalkaji, Delhi)
 High-confidence path extraction and Betweenness Centrality mapping in dense residential sectors, clearly distinguishing major arteries (Yellow/Orange) from peripheral links (Blue).
-![Stable Topology - Delhi](result_3.jpg)
+![Stable Topology - Delhi](result_3.png)
 
-### 4. Disaster Simulation & Cascading Impact (Dwarka, Delhi)
+### 4. Disaster Simulation & Cascading Impact (Delhi)
 Live ablation testing in action. A critical route has been severed, triggering an instant traffic reroute and revealing a severe 30.0% drop in the overall Network Resilience Index.
-![Disaster Simulation - Dwarka](result_4.jpg)
+![Disaster Simulation - Dwarka](result_4.png)
 
 ### 5. Systemic Vulnerability Mapping (Hyderabad)
 Demonstrating the "Degraded Mode" where the AI surgically recalculates the graph matrix, showing how surrounding secondary routes bear the stress of a collapsed major artery.
-![Systemic Impact - Hyderabad](result_2.jpg)
+![Systemic Impact - Hyderabad](result_2.png)
 
 ---
 
