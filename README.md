@@ -846,14 +846,6 @@ for providing the open technologies and datasets that made this work possible.
 
 ---
 
-# 📜 License
-
-This project is released under the **MIT License**.
-
-Feel free to use, modify and extend this work for academic and research purposes.
-
----
-
 <div align="center">
 
 ## 🌉 Project S.E.T.U
