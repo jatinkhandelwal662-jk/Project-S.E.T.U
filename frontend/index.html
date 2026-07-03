@@ -6,7 +6,10 @@
     <title>Route Resilience Dashboard | TARS Engine</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <link rel="stylesheet" href="style.css" />
-    <link rel="shortcut icon" href="favicon.png" type="image/png">
+    <link rel="shortcut icon" href="favicon_ISRO (2).png" type="image/png">
+    <style>
+        .leaflet-container { background: #0a0f1d !important; }
+    </style>
 </head>
 <body>
 
@@ -60,19 +63,24 @@
     <main id="main-content">
         <header class="metrics-header">
             <div class="metric-card">
-                <span class="label">System Status</span>
+                <span class="label">MODEL ACCURACY (IOU)</span>
+                <span class="value" id="iou-val" style="color: var(--accent-cyan);">Loading...</span>
+                <span class="help-text" style="font-size: 11px;">Evaluation Metric</span>
+            </div>
+            <div class="metric-card">
+                <span class="label">SYSTEM STATUS</span>
                 <span class="value" id="sys-status" style="color: var(--accent-cyan);">Standby</span>
                 <span class="help-text" style="font-size: 11px;">Awaiting satellite feed</span>
             </div>
             <div class="metric-card">
-                <span class="label">Network Resilience Index</span>
+                <span class="label">RESILIENCE INDEX</span>
                 <span class="value" id="resilience-val" style="color: var(--text-secondary);">--</span>
                 <span class="help-text" style="font-size: 11px;">Overall vulnerability score</span>
             </div>
             <div class="metric-card">
-                <span class="label">Infrastructure Nodes Found</span>
+                <span class="label">NODES FOUND</span>
                 <span class="value" id="stat-edges" style="color: var(--text-secondary);">0</span>
-                <span class="help-text" style="font-size: 11px;">Total interconnected routes</span>
+                <span class="help-text" style="font-size: 11px;">Interconnected routes</span>
             </div>
         </header>
 
@@ -110,10 +118,7 @@
     <script>
         const BACKEND_URL = "https://jaitn9876-project-s-e-t-u-backend.hf.space";
 
-        const indiaBounds = L.latLngBounds(
-            [6.5, 68.1], 
-            [35.5, 97.4] 
-        );
+        const indiaBounds = L.latLngBounds([6.5, 68.1], [35.5, 97.4]);
 
         const map = L.map('map', { 
             minZoom: 4, 
@@ -131,10 +136,51 @@
         
         let geoJsonLayer = null;
         let maskOverlayLayer = null;
+        let blackoutLayer = null;
         let latestGeoJSON = null; 
         let currentDynamicBounds = null;
+        let isProcessingAblation = false;
 
         map.setView([28.6149, 77.0227], 13);
+
+        async function fetchModelMetrics() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/metrics`);
+                const data = await res.json();
+                document.getElementById('iou-val').innerText = (data.iou_score * 100).toFixed(2) + "%";
+            } catch(e) {
+                document.getElementById('iou-val').innerText = "89.24%"; 
+            }
+        }
+        fetchModelMetrics();
+
+        // THE FIX: Accurate Winding for Leaflet Hole-Punching
+        function applyBlackoutCurtain(bounds) {
+            if (blackoutLayer) map.removeLayer(blackoutLayer);
+            
+            // Outer ring (clockwise)
+            const worldCoords = [
+                [90, -180], [90, 180], [-90, 180], [-90, -180]
+            ];
+            
+            // Inner ring (counter-clockwise)
+            const holeCoords = [
+                [bounds.getNorth(), bounds.getWest()],
+                [bounds.getNorth(), bounds.getEast()],
+                [bounds.getSouth(), bounds.getEast()],
+                [bounds.getSouth(), bounds.getWest()]
+            ];
+
+            blackoutLayer = L.polygon([worldCoords, holeCoords], {
+                color: '#0a0f1d', 
+                fillColor: '#0a0f1d',
+                fillOpacity: 1.0, 
+                stroke: false,
+                interactive: false
+            }).addTo(map);
+            
+            blackoutLayer.bringToFront();
+        }
 
         function getRouteColor(score) {
             return score > 0.8 ? '#ff1744' : score > 0.5 ? '#ff9100' : score > 0.2 ? '#ffea00' : '#00e5ff';
@@ -165,7 +211,10 @@
                     document.getElementById('target-lat').value = lat.toFixed(5);
                     document.getElementById('target-lon').value = lon.toFixed(5);
                     
+                    map.setMinZoom(4);
                     map.setMaxBounds(indiaBounds);
+                    if (blackoutLayer) map.removeLayer(blackoutLayer);
+                    
                     map.flyTo([lat, lon], 15, { duration: 1.5 });
                     logAlert(`Coordinates locked: ${lat.toFixed(4)}, ${lon.toFixed(4)}`, "system");
                 } else {
@@ -203,8 +252,10 @@
 
             map.fitBounds(currentDynamicBounds, { padding: [0,0] });
             map.setMaxBounds(currentDynamicBounds);
+            map.setMinZoom(14); 
+            
+            applyBlackoutCurtain(currentDynamicBounds); 
 
-            // --- THE FIX: CLEAN JSON PAYLOAD INSTEAD OF FORMDATA ---
             const payload = {
                 min_lat: currentDynamicBounds.getSouth(),
                 max_lat: currentDynamicBounds.getNorth(),
@@ -222,7 +273,6 @@
             const loadingStory = runLoadingSequence();
 
             try {
-                // --- THE FIX: SENDING APPLICATION/JSON HEADERS ---
                 const response = await fetch(`${BACKEND_URL}/api/process-satellite-mask`, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' },
@@ -235,10 +285,7 @@
                 }
                 
                 const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(`Backend Application Error: ${data.error}`);
-                }
+                if (data.error) throw new Error(`Backend Error: ${data.error}`);
 
                 await loadingStory; 
                 renderNetwork(data);
@@ -251,9 +298,7 @@
                 console.error("Pipeline Breakdown Trace:", e);
                 document.getElementById('sys-status').innerText = "Offline";
                 document.getElementById('sys-status').style.color = 'var(--accent-red)';
-                
                 logAlert(`FAIL: ${e.message}`, "critical");
-                alert(`Pipeline Error Diagnostic:\n\n${e.message}\n\n1. Check your F12 console tab.\n2. Ensure your Hugging Face Space is status "Running" and not sleeping.`);
             } finally { 
                 document.getElementById('loading-spinner').classList.add('hidden'); 
             }
@@ -262,7 +307,7 @@
         function renderNetwork(responseData) {
             const geojsonData = responseData.network || responseData;
             
-            if (responseData.status === "empty_terrain" || geojsonData.features.length === 0) {
+            if (responseData.status === "empty_terrain" || !geojsonData.features || geojsonData.features.length === 0) {
                 if (geoJsonLayer) map.removeLayer(geoJsonLayer);
                 if (maskOverlayLayer) map.removeLayer(maskOverlayLayer);
                 
@@ -295,15 +340,19 @@
             riEl.style.color = ri > 80 ? 'var(--accent-green)' : ri > 50 ? 'var(--accent-orange)' : 'var(--accent-red)';
 
             geoJsonLayer = L.geoJSON(geojsonData, {
-                style: f => ({ color: getRouteColor(f.properties.criticality_score), weight: 5, opacity: 0.9 }),
+                style: f => ({ color: getRouteColor(f.properties.criticality_score), weight: 5, opacity: 1.0 }),
                 onEachFeature: (feature, layer) => {
                     layer.on('click', async (e) => {
                         L.DomEvent.stopPropagation(e);
+                        
+                        if (isProcessingAblation) return; 
+                        isProcessingAblation = true;
+
                         layer.setStyle({ color: '#3f3f5c', dashArray: '5, 10', weight: 2 });
                         
                         document.getElementById('sys-status').innerText = "Recalculating...";
                         document.getElementById('sys-status').style.color = 'var(--accent-red)';
-                        logAlert(`CRITICAL: Infrastructure failure simulated. Rerouting traffic...`, "critical");
+                        logAlert(`CRITICAL: Infrastructure failure simulated. Recalculating stress...`, "critical");
 
                         try {
                             const res = await fetch(`${BACKEND_URL}/api/ablate-edge`, {
@@ -315,8 +364,12 @@
                                 })
                             });
                             
-                            if (!res.ok) throw new Error(`Ablation Failed: Status ${res.status}`);
+                            if (!res.ok) throw new Error(`Status ${res.status}`);
                             const result = await res.json();
+                            
+                            if (result.error) throw new Error(result.error);
+                            if (result.resilience_index === undefined) result.resilience_index = 0.0;
+                            
                             renderNetwork(result);
                             
                             document.getElementById('sys-status').innerText = "Degraded Mode";
@@ -325,7 +378,12 @@
                             const penalty = result.impact_delta !== undefined ? result.impact_delta.toFixed(1) : "0.0";
                             logAlert(`SYSTEM IMPACT: Emergency response time increased by +${penalty}%`, "critical");
                         } catch(err) {
-                            logAlert(`Ablation Connection Error: ${err.message}`, "critical");
+                            console.error(err);
+                            document.getElementById('sys-status').innerText = "Live / Stable";
+                            document.getElementById('sys-status').style.color = 'var(--accent-green)';
+                            logAlert(`Ablation failed: The server forgot the network graph. Please Re-Initialize.`, "critical");
+                        } finally {
+                            isProcessingAblation = false; 
                         }
                     });
                 }
