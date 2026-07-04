@@ -802,23 +802,6 @@ The following resources inspired the development of this project.
 
 ---
 
-# 🚀 Future Work
-
-Future enhancements include
-
-- Graph Neural Networks (GNNs)
-- Multi-temporal Satellite Analysis
-- Flood Prediction Integration
-- Real-time Traffic Fusion
-- UAV Imagery Support
-- Temporal Infrastructure Monitoring
-- Automatic Road Damage Detection
-- Multi-country Deployment
-- ISRO Bhuvan Integration
-- Edge Deployment on Satellite Processing Systems
-
----
-
 ## 👥 Team TARS 
 
 Engineered for the Bharatiya Antariksh Hackathon. 
