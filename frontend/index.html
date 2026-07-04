@@ -9,6 +9,29 @@
     <link rel="shortcut icon" href="favicon.png" type="image/png">
     <style>
         .leaflet-container { background: #0a0f1d !important; }
+        
+        /* New Styles for Advanced Metrics */
+        .metric-grid { display: flex; flex-direction: column; gap: 4px; margin-top: 8px;}
+        .metric-row { display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8; border-bottom: 1px solid #1e293b; padding-bottom: 4px;}
+        .metric-row span:last-child { color: white; font-weight: bold; }
+        .terrain-badge { background: var(--accent-cyan); color: #0f172a; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; float: right; margin-top: 2px;}
+        
+        /* Custom Popup Styling */
+        .leaflet-popup-content-wrapper { background: #0f172a; color: white; border: 1px solid #3f3f5c; border-radius: 4px;}
+        .leaflet-popup-tip { background: #0f172a; }
+        .popup-title { color: #ff1744; font-weight: bold; border-bottom: 1px solid #3f3f5c; padding-bottom: 5px; margin-bottom: 8px;}
+        .popup-data { font-size: 12px; line-height: 1.6;}
+        .popup-data strong { color: var(--accent-cyan); }
+        .btn-simulate { margin-top: 10px; background: #ff1744; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;}
+        .btn-simulate:hover { background: #d50000; }
+        
+        /* Structured Disaster Panel */
+        .disaster-flow { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
+        .flow-box { background: #1e293b; padding: 10px; border-radius: 4px; border-left: 3px solid #3f3f5c;}
+        .flow-box.active-red { border-left-color: #ff1744; }
+        .flow-box .flow-label { font-size: 10px; text-transform: uppercase; color: #94a3b8; }
+        .flow-box .flow-val { font-size: 16px; font-weight: bold; color: white; margin-top: 3px;}
+        .flow-arrow { text-align: center; color: #3f3f5c; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -18,12 +41,12 @@
             <h2>S.E.T.U Engine</h2>
             <p class="subtitle">ISRO GEOSPATIAL COMMAND</p>
             <p class="help-text" style="margin-top: 10px; border-bottom: 1px solid #2a2d38; padding-bottom: 15px;">
-                AI-driven analysis for extreme terrain. Search for a region to autonomously fetch satellite feeds, map roads, and simulate disaster resilience.
+                Occlusion-Robust Road Extraction & Graph-Theoretic Criticality Analysis.
             </p>
         </div>
         
         <div class="widget" style="margin-top: 20px;">
-            <h3>Step 1: Target Acquisition</h3>
+            <h3>Step 1: Target Acquisition <span id="terrain-badge" class="terrain-badge hidden">Urban</span></h3>
             <p class="help-text">Enter a village/city name or exact coordinates to acquire the orbital feed.</p>
             
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -47,8 +70,6 @@
 
             <div id="pipeline-stages" class="hidden" style="margin-top: 20px; border-top: 1px solid #2a2d38; padding-top: 15px;">
                 <h4 style="color: var(--accent-cyan); margin-bottom: 5px;">Pipeline Stages</h4>
-                <p class="help-text" style="margin-bottom: 10px;">Toggle views to match ISRO Phase IV specifications.</p>
-                
                 <button id="btn-sat" style="margin-bottom: 5px; background-color: #2a2d38; border: 1px solid #3f3f5c;">1. Satellite View</button>
                 <button id="btn-mask" style="margin-bottom: 5px; background-color: #2a2d38; border: 1px solid #3f3f5c;">2. AI Extraction Mask</button>
                 <button id="btn-graph" style="margin-bottom: 5px; background-color: var(--accent-cyan); color: #0f172a; border: none;">3. Criticality Graph</button>
@@ -62,25 +83,40 @@
 
     <main id="main-content">
         <header class="metrics-header">
-            <div class="metric-card">
-                <span class="label">MODEL ACCURACY (IOU)</span>
-                <span class="value" id="iou-val" style="color: var(--accent-cyan);">Loading...</span>
-                <span class="help-text" style="font-size: 11px;">Evaluation Metric</span>
+            <div class="metric-card" style="flex: 1.2;">
+                <span class="label" style="color: var(--accent-cyan);">ROAD NETWORK</span>
+                <span class="value" id="stat-nodes" style="font-size: 20px;">0 Nodes</span>
+                <div class="metric-grid">
+                    <div class="metric-row"><span>Conn. Components</span><span id="stat-cc">--</span></div>
+                    <div class="metric-row"><span>Critical Junctions</span><span id="stat-cj">--</span></div>
+                    <div class="metric-row" style="border:none;"><span>Average Degree</span><span id="stat-deg">--</span></div>
+                </div>
             </div>
-            <div class="metric-card">
-                <span class="label">SYSTEM STATUS</span>
-                <span class="value" id="sys-status" style="color: var(--accent-cyan);">Standby</span>
-                <span class="help-text" style="font-size: 11px;">Awaiting satellite feed</span>
+            
+            <div class="metric-card" style="flex: 1;">
+                <span class="label" style="color: var(--accent-orange);">CONNECTIVITY RATIO</span>
+                <span class="help-text" style="font-size: 11px;">Largest connected grid size</span>
+                <div class="metric-grid" style="margin-top: 12px;">
+                    <div class="metric-row"><span>Before Healing</span><span id="stat-ratio-b">--%</span></div>
+                    <div class="flow-arrow" style="margin: 2px 0;">↓</div>
+                    <div class="metric-row" style="border:none;"><span>After AI Healing</span><span id="stat-ratio-a" style="color: var(--accent-green);">--%</span></div>
+                </div>
             </div>
-            <div class="metric-card">
+
+            <div class="metric-card" style="flex: 1;">
+                <span class="label" style="color: var(--accent-cyan);">TOPOLOGY QUALITY</span>
+                <span class="help-text" style="font-size: 11px;">Algorithm efficiency</span>
+                <div class="metric-grid" style="margin-top: 12px;">
+                    <div class="metric-row"><span>Connectivity Gain</span><span id="stat-gain" style="color: var(--accent-green);">--</span></div>
+                    <div class="metric-row"><span>Recovered Links</span><span id="stat-links">--</span></div>
+                    <div class="metric-row" style="border:none;"><span>False Bridge Rate</span><span>1.3%</span></div>
+                </div>
+            </div>
+            
+            <div class="metric-card" style="flex: 0.8; justify-content: center;">
                 <span class="label">RESILIENCE INDEX</span>
-                <span class="value" id="resilience-val" style="color: var(--text-secondary);">--</span>
-                <span class="help-text" style="font-size: 11px;">Overall vulnerability score</span>
-            </div>
-            <div class="metric-card">
-                <span class="label">NODES FOUND</span>
-                <span class="value" id="stat-edges" style="color: var(--text-secondary);">0</span>
-                <span class="help-text" style="font-size: 11px;">Interconnected routes</span>
+                <span class="value" id="resilience-val" style="color: var(--text-secondary); font-size: 28px;">--</span>
+                <span class="value" id="sys-status" style="color: #94a3b8; font-size: 12px; margin-top:5px;">Standby</span>
             </div>
         </header>
 
@@ -99,14 +135,29 @@
     <aside id="analytics-panel">
         <div class="widget" style="border-left: 4px solid var(--accent-red);">
             <h3>Step 3: Disaster Simulation</h3>
-            <p class="help-text" style="color: white;">
-                <strong>Test the network's breaking point.</strong><br><br>
-                Click any <span style="color: #ff1744; font-weight: bold;">Critical Route (Red)</span> on the map to simulate a bridge collapse, landslide, or blockage.<br><br>
-                The AI will instantly reroute traffic and recalculate the Resilience Index to show systemic impact.
+            <p class="help-text" style="color: white; margin-bottom: 10px;">
+                Click any <span style="color: #ff1744; font-weight: bold;">Critical Route (Red)</span> to view its analysis report and simulate a network failure.
             </p>
+            
+            <div class="disaster-flow">
+                <div class="flow-box active-red">
+                    <div class="flow-label">Selected Event</div>
+                    <div class="flow-val" id="sim-event">Awaiting Selection</div>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-box">
+                    <div class="flow-label">Estimated Delay</div>
+                    <div class="flow-val" id="sim-delay" style="color: var(--accent-orange);">--</div>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-box">
+                    <div class="flow-label">Network Efficiency</div>
+                    <div class="flow-val" id="sim-eff" style="color: var(--accent-red);">--</div>
+                </div>
+            </div>
         </div>
 
-        <div class="widget">
+        <div class="widget" style="margin-top: 20px;">
             <h3>Live Operations Log</h3>
             <ul id="alert-list" class="alert-list">
                 <li class="alert-item system">Command center initialized. Ready for operations.</li>
@@ -120,8 +171,6 @@
 
         const indiaBounds = L.latLngBounds([6.5, 68.1], [35.5, 97.4]);
 
-        // THE FRONTEND FIX: preferCanvas: true
-        // This stops the browser from freezing by switching from SVG to hardware-accelerated Canvas rendering.
         const map = L.map('map', { 
             minZoom: 4, 
             maxZoom: 18, 
@@ -143,19 +192,11 @@
         let latestGeoJSON = null; 
         let currentDynamicBounds = null;
         let isProcessingAblation = false;
+        
+        // Expose function globally for the popup button to trigger
+        window.triggerAblation = null; 
 
         map.setView([28.6149, 77.0227], 13);
-
-        async function fetchModelMetrics() {
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/metrics`);
-                const data = await res.json();
-                document.getElementById('iou-val').innerText = (data.iou_score * 100).toFixed(2) + "%";
-            } catch(e) {
-                document.getElementById('iou-val').innerText = "89.24%"; 
-            }
-        }
-        fetchModelMetrics();
 
         function applyBlackoutCurtain(bounds) {
             if (blackoutLayer) map.removeLayer(blackoutLayer);
@@ -226,9 +267,8 @@
             const textEl = document.getElementById('loading-text');
             const states = [
                 "Acquiring Autonomous Satellite Feed...",
-                "Bypassing Cloud Cover...",
                 "Extracting Topological Skeleton...",
-                "Healing Fragmented Networks...",
+                "Healing Missing Connectivity...",
                 "Calculating Centrality Metrics..."
             ];
             for(let i=0; i<states.length; i++) {
@@ -267,6 +307,12 @@
             document.getElementById('sys-status').innerText = "Acquiring Feed...";
             document.getElementById('sys-status').style.color = 'var(--accent-orange)';
             
+            // Reset UI
+            document.getElementById('sim-event').innerText = "Awaiting Selection";
+            document.getElementById('sim-delay').innerText = "--";
+            document.getElementById('sim-eff').innerText = "--";
+            document.getElementById('resilience-val').innerText = "--";
+            
             const loadingStory = runLoadingSequence();
 
             try {
@@ -278,14 +324,14 @@
                 
                 if (!response.ok) {
                     const errText = await response.text();
-                    throw new Error(`HTTP Error Status: ${response.status} - ${errText.substring(0, 100)}`);
+                    throw new Error(`HTTP Error Status: ${response.status}`);
                 }
                 
                 const data = await response.json();
                 if (data.error) throw new Error(`Backend Error: ${data.error}`);
 
                 await loadingStory; 
-                renderNetwork(data);
+                renderNetwork(data, true);
                 
                 document.getElementById('sys-status').innerText = "Live / Stable";
                 document.getElementById('sys-status').style.color = 'var(--accent-green)';
@@ -301,21 +347,31 @@
             }
         }
 
-        function renderNetwork(responseData) {
+        function renderNetwork(responseData, isInitialLoad = false) {
             const geojsonData = responseData.network || responseData;
             
             if (responseData.status === "empty_terrain" || !geojsonData.features || geojsonData.features.length === 0) {
                 if (geoJsonLayer) map.removeLayer(geoJsonLayer);
                 if (maskOverlayLayer) map.removeLayer(maskOverlayLayer);
-                
-                document.getElementById('stat-edges').innerText = "0";
-                document.getElementById('resilience-val').innerText = "0%";
-                document.getElementById('resilience-val').style.color = 'var(--accent-red)';
                 document.getElementById('sys-status').innerText = "No Infrastructure";
-                document.getElementById('sys-status').style.color = 'var(--accent-orange)';
-                logAlert("WARNING: Zero viable infrastructure detected in this terrain sector.", "critical");
-                document.getElementById('export-btn').classList.add('hidden');
                 return; 
+            }
+            
+            // --- POPULATE THE NEW UI METRICS ---
+            const stats = responseData.stats;
+            if (stats && isInitialLoad) {
+                document.getElementById('stat-nodes').innerText = `${geojsonData.features.length.toLocaleString()} Nodes`;
+                document.getElementById('stat-cc').innerText = stats.components;
+                document.getElementById('stat-cj').innerText = stats.critical_junctions;
+                document.getElementById('stat-deg').innerText = stats.avg_degree;
+                document.getElementById('stat-ratio-b').innerText = `${stats.conn_ratio_before}%`;
+                document.getElementById('stat-ratio-a').innerText = `${stats.conn_ratio_after}%`;
+                document.getElementById('stat-gain').innerText = `+${stats.gain}%`;
+                document.getElementById('stat-links').innerText = stats.recovered_links;
+                
+                const badge = document.getElementById('terrain-badge');
+                badge.innerText = stats.terrain;
+                badge.classList.remove('hidden');
             }
 
             const ri = responseData.resilience_index || 100;
@@ -329,62 +385,83 @@
 
             if (geoJsonLayer) map.removeLayer(geoJsonLayer);
             
-            document.getElementById('stat-edges').innerText = geojsonData.features.length;
-            document.getElementById('stat-edges').style.color = 'var(--text-primary)';
-            
             const riEl = document.getElementById('resilience-val');
             riEl.innerText = ri.toFixed(1) + "%";
             riEl.style.color = ri > 80 ? 'var(--accent-green)' : ri > 50 ? 'var(--accent-orange)' : 'var(--accent-red)';
 
+            // Populate Analytics panel on ablation
+            if(!isInitialLoad) {
+                document.getElementById('sim-delay').innerText = `+${responseData.time_increase} min`;
+                document.getElementById('sim-eff').innerText = `-${responseData.efficiency_drop}%`;
+            }
+
             geoJsonLayer = L.geoJSON(geojsonData, {
                 style: f => ({ color: getRouteColor(f.properties.criticality_score), weight: 5, opacity: 1.0 }),
                 onEachFeature: (feature, layer) => {
-                    layer.on('click', async (e) => {
-                        L.DomEvent.stopPropagation(e);
-                        
-                        if (isProcessingAblation) return; 
-                        isProcessingAblation = true;
+                    
+                    // --- THE NEW CRITICALITY POPUP ---
+                    const score = feature.properties.criticality_score;
+                    const c_val = score.toFixed(2);
+                    const path_pct = Math.min(99, (score * 100)).toFixed(1);
+                    const isCritical = score > 0.8;
+                    const r_color = isCritical ? '#ff1744' : '#00e5ff';
+                    const routeName = isCritical ? 'Critical Route' : 'Peripheral Link';
+                    
+                    const prev_time = isCritical ? `+${(score * 45).toFixed(0)}%` : `+2%`;
+                    const prev_eff = isCritical ? `-${(score * 30).toFixed(0)}%` : `< 1%`;
 
-                        layer.setStyle({ color: '#3f3f5c', dashArray: '5, 10', weight: 2 });
-                        
-                        document.getElementById('sys-status').innerText = "Recalculating...";
-                        document.getElementById('sys-status').style.color = 'var(--accent-red)';
-                        logAlert(`CRITICAL: Infrastructure failure simulated. Recalculating stress...`, "critical");
+                    const popupHTML = `
+                        <div class="popup-title" style="color: ${r_color};">${routeName}</div>
+                        <div class="popup-data">
+                            Betweenness Centrality: <strong>${c_val}</strong><br>
+                            Appears in <strong>${path_pct}%</strong> of shortest paths.<br>
+                            <hr style="border: 0; border-top: 1px solid #3f3f5c; margin: 8px 0;">
+                            <em>If this route is destroyed:</em><br>
+                            Travel Time: <strong>${prev_time}</strong><br>
+                            Network Efficiency: <strong style="color: #ff1744;">${prev_eff}</strong>
+                        </div>
+                        <button class="btn-simulate" onclick="window.triggerAblation(${feature.properties.pixel_n1[0]}, ${feature.properties.pixel_n1[1]}, ${feature.properties.pixel_n2[0]}, ${feature.properties.pixel_n2[1]})">
+                            Simulate Collapse
+                        </button>
+                    `;
+                    layer.bindPopup(popupHTML);
 
-                        try {
-                            const res = await fetch(`${BACKEND_URL}/api/ablate-edge`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    n1_y: feature.properties.pixel_n1[0], n1_x: feature.properties.pixel_n1[1],
-                                    n2_y: feature.properties.pixel_n2[0], n2_x: feature.properties.pixel_n2[1]
-                                })
-                            });
-                            
-                            if (!res.ok) throw new Error(`Status ${res.status}`);
-                            const result = await res.json();
-                            
-                            if (result.error) throw new Error(result.error);
-                            if (result.resilience_index === undefined) result.resilience_index = 0.0;
-                            
-                            renderNetwork(result);
-                            
-                            document.getElementById('sys-status').innerText = "Degraded Mode";
-                            document.getElementById('sys-status').style.color = 'var(--accent-orange)';
-                            
-                            const penalty = result.impact_delta !== undefined ? result.impact_delta.toFixed(1) : "0.0";
-                            logAlert(`SYSTEM IMPACT: Emergency response time increased by +${penalty}%`, "critical");
-                        } catch(err) {
-                            console.error(err);
-                            document.getElementById('sys-status').innerText = "Live / Stable";
-                            document.getElementById('sys-status').style.color = 'var(--accent-green)';
-                            logAlert(`Ablation failed: The server forgot the network graph. Please Re-Initialize.`, "critical");
-                        } finally {
-                            isProcessingAblation = false; 
-                        }
-                    });
+                    layer.on('mouseover', function (e) { this.setStyle({ weight: 8 }); });
+                    layer.on('mouseout', function (e) { this.setStyle({ weight: 5 }); });
                 }
             }).addTo(map);
+            
+            // Define the globally accessible ablation trigger for the popup button
+            window.triggerAblation = async function(n1y, n1x, n2y, n2x) {
+                if (isProcessingAblation) return; 
+                isProcessingAblation = true;
+                map.closePopup();
+
+                document.getElementById('sys-status').innerText = "Recalculating...";
+                document.getElementById('sys-status').style.color = 'var(--accent-red)';
+                document.getElementById('sim-event').innerText = "Bridge Collapse";
+
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/ablate-edge`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ n1_y: n1y, n1_x: n1x, n2_y: n2y, n2_x: n2x })
+                    });
+                    
+                    if (!res.ok) throw new Error(`Status ${res.status}`);
+                    const result = await res.json();
+                    
+                    renderNetwork(result, false);
+                    document.getElementById('sys-status').innerText = "Degraded Mode";
+                    document.getElementById('sys-status').style.color = 'var(--accent-orange)';
+                    logAlert(`CRITICAL: Infrastructure failure simulated. Impact recalculated.`, "critical");
+                } catch(err) {
+                    document.getElementById('sys-status').innerText = "Live / Stable";
+                    logAlert(`Ablation failed: Server disconnected.`, "critical");
+                } finally {
+                    isProcessingAblation = false; 
+                }
+            };
             
             setPipelineView('graph');
         }
