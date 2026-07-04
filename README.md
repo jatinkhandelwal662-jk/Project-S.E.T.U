@@ -826,23 +826,6 @@ Engineered for the Bharatiya Antariksh Hackathon.
 * **[Khushi Dalal](https://github.com/khushiidalal)**
 * **[Jatin Khandelwal](https://github.com/jatinkhandelwal662-jk)**
 * **[Bhavishya Bhati](https://github.com/BHAVISHYA-2007)**
----
-
-# 🙏 Acknowledgements
-
-We sincerely thank
-
-- Indian Space Research Organisation (ISRO)
-- Bharatiya Antariksh Hackathon 2026
-- OpenStreetMap Community
-- Hugging Face
-- PyTorch
-- FastAPI
-- Leaflet.js
-- SpaceNet Dataset
-- DeepGlobe Challenge
-
-for providing the open technologies and datasets that made this work possible.
 
 ---
 
