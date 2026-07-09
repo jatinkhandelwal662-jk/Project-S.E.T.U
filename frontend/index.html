@@ -83,6 +83,7 @@
                 <p id="loading-text" style="color: var(--accent-cyan); font-weight: 600;">Acquiring Feed...</p>
             </div>
 
+            <!-- The Full 6-Stage ISRO Pipeline -->
             <div id="pipeline-stages" class="hidden" style="margin-top: 20px; border-top: 1px solid #2a2d38; padding-top: 15px;">
                 <h4 style="color: var(--accent-cyan); margin-bottom: 5px;">Algorithm Telemetry</h4>
                 <button id="btn-sat" class="pipe-btn" style="margin-bottom: 5px; background-color: #2a2d38; border: 1px solid #3f3f5c; width:100%; color: white;">1. Raw Satellite</button>
@@ -175,7 +176,7 @@
             </div>
         </div>
 
-        <!-- Live Operations Log -->
+        <!-- THE FIX: The restored Live Operations Log -->
         <div class="widget" style="margin-top: 20px;">
             <h3>Live Operations Log</h3>
             <ul id="alert-list" class="alert-list">
@@ -264,6 +265,7 @@
 
         function logAlert(message, type = 'system') {
             const list = document.getElementById('alert-list');
+            if (!list) return; // THE FIX: Failsafe in case element is missing
             const li = document.createElement('li');
             li.className = `alert-item ${type}`;
             li.innerText = message;
@@ -351,7 +353,6 @@
             document.getElementById('export-btn').classList.add('hidden'); 
             document.getElementById('pipeline-stages').classList.add('hidden');
             
-            // Replaced sys-status crash element with safe logging
             logAlert("System initializing. Acquiring orbital feed...", "system");
             
             document.getElementById('sim-event').innerText = "Awaiting Selection";
@@ -372,7 +373,6 @@
 
                 await loadingStory; 
                 
-                // Load Image Overlays
                 if (probOverlayLayer) map.removeLayer(probOverlayLayer);
                 if (skelOverlayLayer) map.removeLayer(skelOverlayLayer);
                 if (maskOverlayLayer) map.removeLayer(maskOverlayLayer);
