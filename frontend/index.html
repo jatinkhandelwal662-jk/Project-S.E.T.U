@@ -9,20 +9,15 @@
     <link rel="shortcut icon" href="favicon.png" type="image/png">
     <style>
         .leaflet-container { background: #0a0f1d !important; }
-        
         .metrics-header { display: flex; gap: 12px; }
         .metric-card { flex: 1; padding: 12px; position: relative; }
-        
         .metric-grid { display: flex; flex-direction: column; gap: 4px; margin-top: 8px;}
         .metric-row { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; border-bottom: 1px solid #1e293b; padding-bottom: 4px;}
         .metric-row span:last-child { color: white; font-weight: bold; }
-        
         .terrain-badge { background: var(--accent-cyan); color: #0f172a; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; float: right; margin-top: 2px;}
         .sat-badge { background: #1e293b; color: #94a3b8; padding: 3px 6px; border-radius: 4px; font-size: 10px; margin-bottom: 8px; display: inline-block; border: 1px solid #3f3f5c;}
         .risk-badge { font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; color: #0f172a; display: inline-block; margin-top: 8px;}
-        
         .info-icon { font-size: 10px; background: #3f3f5c; color: white; border-radius: 50%; padding: 0 4px; cursor: help; margin-left: 4px;}
-        
         .leaflet-popup-content-wrapper { background: #0f172a; color: white; border: 1px solid #3f3f5c; border-radius: 4px;}
         .leaflet-popup-tip { background: #0f172a; }
         .popup-title { color: #ff1744; font-weight: bold; border-bottom: 1px solid #3f3f5c; padding-bottom: 5px; margin-bottom: 8px; font-size: 14px;}
@@ -30,15 +25,12 @@
         .popup-data strong { color: var(--accent-cyan); font-size: 12px; }
         .btn-simulate { margin-top: 10px; background: #ff1744; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.2s;}
         .btn-simulate:hover { background: #d50000; }
-        
         .disaster-flow { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
         .flow-box { background: #1e293b; padding: 10px; border-radius: 4px; border-left: 3px solid #3f3f5c;}
         .flow-box.active-red { border-left-color: #ff1744; }
         .flow-box .flow-label { font-size: 10px; text-transform: uppercase; color: #94a3b8; }
         .flow-box .flow-val { font-size: 16px; font-weight: bold; color: white; margin-top: 3px;}
         .flow-arrow { text-align: center; color: #3f3f5c; font-size: 14px; margin: 2px 0;}
-
-        /* Modal Styling */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
         .modal-content { background-color: #0f172a; margin: 5% auto; padding: 20px; border: 1px solid #3f3f5c; width: 80%; max-width: 800px; border-radius: 8px; color: white; max-height: 80vh; overflow-y: auto;}
         .close-btn { color: #94a3b8; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -50,26 +42,21 @@
     </style>
 </head>
 <body>
-
     <aside id="sidebar">
         <div class="brand">
             <h2>S.E.T.U Engine</h2>
             <p class="subtitle">ISRO GEOSPATIAL COMMAND</p>
-            <p class="help-text" style="margin-top: 10px; border-bottom: 1px solid #2a2d38; padding-bottom: 15px;">
-                Occlusion-Robust Road Extraction & Graph-Theoretic Criticality Analysis.
-            </p>
+            <p class="help-text" style="margin-top: 10px; border-bottom: 1px solid #2a2d38; padding-bottom: 15px;">Occlusion-Robust Road Extraction & Graph-Theoretic Criticality Analysis.</p>
             <button id="info-btn" style="width: 100%; background: #1e293b; border: 1px solid #3f3f5c; color: #00e5ff; padding: 6px; margin-top: 10px; border-radius: 4px; cursor: pointer;">View Methodology & Architecture</button>
         </div>
         
         <div class="widget" style="margin-top: 20px;">
             <h3>Step 1: Target Acquisition <span id="terrain-badge" class="terrain-badge hidden">Urban</span></h3>
             <span class="sat-badge">Source: Cartosat-2 / Sentinel-2 (Simulated)</span>
-            
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                 <input type="text" id="location-search" placeholder="e.g., Delhi" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
                 <button id="search-btn" style="width: 80px; padding: 8px; font-size: 13px;">Search</button>
             </div>
-
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                 <input type="number" id="target-lat" value="28.61494" step="0.0001" placeholder="Latitude" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
                 <input type="number" id="target-lon" value="77.02276" step="0.0001" placeholder="Longitude" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;">
@@ -83,7 +70,6 @@
                 <p id="loading-text" style="color: var(--accent-cyan); font-weight: 600;">Acquiring Feed...</p>
             </div>
 
-            <!-- The Full 6-Stage ISRO Pipeline -->
             <div id="pipeline-stages" class="hidden" style="margin-top: 20px; border-top: 1px solid #2a2d38; padding-top: 15px;">
                 <h4 style="color: var(--accent-cyan); margin-bottom: 5px;">Algorithm Telemetry</h4>
                 <button id="btn-sat" class="pipe-btn" style="margin-bottom: 5px; background-color: #2a2d38; border: 1px solid #3f3f5c; width:100%; color: white;">1. Raw Satellite</button>
@@ -141,7 +127,6 @@
 
         <div id="map-container">
             <div id="map"></div>
-            <!-- Legend updates dynamically based on view -->
             <div id="map-legend">
                 <h4 id="legend-title">Vulnerability Heatmap</h4>
                 <div id="legend-content"></div>
@@ -152,10 +137,7 @@
     <aside id="analytics-panel">
         <div class="widget" style="border-left: 4px solid var(--accent-red);">
             <h3>Step 3: Disaster Simulation</h3>
-            <p class="help-text" style="color: white; margin-bottom: 10px;">
-                Click any <span style="color: #ff1744; font-weight: bold;">Critical Route (Red)</span> to view its analysis report and simulate a network failure.
-            </p>
-            
+            <p class="help-text" style="color: white; margin-bottom: 10px;">Click any <span style="color: #ff1744; font-weight: bold;">Critical Route (Red)</span> to view its analysis report and simulate a network failure.</p>
             <div class="disaster-flow">
                 <div class="flow-box active-red">
                     <div class="flow-label">Selected Event</div>
@@ -176,7 +158,6 @@
             </div>
         </div>
 
-        <!-- THE FIX: The restored Live Operations Log -->
         <div class="widget" style="margin-top: 20px;">
             <h3>Live Operations Log</h3>
             <ul id="alert-list" class="alert-list">
@@ -185,36 +166,17 @@
         </div>
     </aside>
 
-    <!-- Architecture Modal -->
     <div id="arch-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="close-modal">&times;</span>
             <h2>S.E.T.U Architecture & Methodology</h2>
-            
             <h4 style="color: var(--accent-orange);">1. Why Hybrid TransUNet?</h4>
-            <p style="font-size: 13px; color: #cbd5e1; line-height: 1.5; margin-bottom: 15px;">
-                Traditional CNNs (like DeepLabV3+) excel at local pixel features but fail to understand "global context," leading to fragmented roads under clouds or shadows. 
-                <br><br>
-                Our <strong>Hybrid TransUNet</strong> fixes this: The CNN Encoder captures the local road textures, and the Transformer (Self-Attention) mechanism captures the global trajectory. The AI learns to "hallucinate" logical road continuity beneath occlusions.
-            </p>
-
+            <p style="font-size: 13px; color: #cbd5e1; line-height: 1.5; margin-bottom: 15px;">Traditional CNNs excel at local pixel features but fail to understand "global context," leading to fragmented roads under clouds or shadows.<br><br>Our <strong>Hybrid TransUNet</strong> fixes this: The CNN Encoder captures the local road textures, and the Transformer (Self-Attention) mechanism captures the global trajectory. The AI learns to "hallucinate" logical road continuity beneath occlusions.</p>
             <h4 style="color: var(--accent-orange);">2. Topological Healing (Union-Find & MST)</h4>
-            <p style="font-size: 13px; color: #cbd5e1; line-height: 1.5; margin-bottom: 15px;">
-                To satisfy ISRO requirements, we utilize Disjoint Sets (Union-Find) and Minimum Spanning Trees (MST) to mathematically bridge missing links. 
-                <br><br>
-                <strong>Technical Risk Mitigation:</strong> How do we prevent the algorithm from connecting two parallel highways 20 meters apart? We apply strict heuristic constraints: 
-                The algorithm only heals an edge if: <br>
-                1. Euclidean distance < 60px.<br>
-                2. Angular Alignment (Cosine Similarity) > 0.25 (Rejects impossible 90° connections).
-            </p>
-
+            <p style="font-size: 13px; color: #cbd5e1; line-height: 1.5; margin-bottom: 15px;">To satisfy ISRO requirements, we utilize Disjoint Sets (Union-Find) and Minimum Spanning Trees (MST) to mathematically bridge missing links.<br><br><strong>Technical Risk Mitigation:</strong> How do we prevent the algorithm from connecting two parallel highways 20 meters apart? We apply strict heuristic constraints:<br>1. Euclidean distance < 60px.<br>2. Angular Alignment (Cosine Similarity) > 0.25 (Rejects impossible 90° connections).</p>
             <h4 style="color: var(--accent-orange);">3. Ablation Study (Research Gap)</h4>
             <table>
-                <tr>
-                    <th>Method</th>
-                    <th>IoU Score</th>
-                    <th>Connectivity Ratio</th>
-                </tr>
+                <tr><th>Method</th><th>IoU Score</th><th>Connectivity Ratio</th></tr>
                 <tr><td>U-Net Baseline</td><td>84.1%</td><td>78%</td></tr>
                 <tr><td>DeepLabV3+</td><td>87.2%</td><td>83%</td></tr>
                 <tr style="background: rgba(0, 229, 255, 0.1);"><td><strong>Hybrid TransUNet (Ours)</strong></td><td><strong>90.1%</strong></td><td><strong>91%</strong></td></tr>
@@ -243,10 +205,8 @@
         let currentViewMode = 'graph'; 
         
         window.triggerAblation = null; 
-
         map.setView([28.6149, 77.0227], 13);
 
-        // Modal Logic
         document.getElementById('info-btn').onclick = () => document.getElementById('arch-modal').style.display = "block";
         document.getElementById('close-modal').onclick = () => document.getElementById('arch-modal').style.display = "none";
         window.onclick = (e) => { if (e.target == document.getElementById('arch-modal')) document.getElementById('arch-modal').style.display = "none"; }
@@ -259,13 +219,11 @@
             blackoutLayer.bringToFront();
         }
 
-        function getRouteColor(score) {
-            return score > 0.8 ? '#ff1744' : score > 0.5 ? '#ff9100' : score > 0.2 ? '#ffea00' : '#00e5ff';
-        }
+        function getRouteColor(score) { return score > 0.8 ? '#ff1744' : score > 0.5 ? '#ff9100' : score > 0.2 ? '#ffea00' : '#00e5ff'; }
 
         function logAlert(message, type = 'system') {
             const list = document.getElementById('alert-list');
-            if (!list) return; // THE FIX: Failsafe in case element is missing
+            if (!list) return; 
             const li = document.createElement('li');
             li.className = `alert-item ${type}`;
             li.innerText = message;
@@ -290,12 +248,8 @@
                     if (blackoutLayer) map.removeLayer(blackoutLayer);
                     map.flyTo([lat, lon], 15, { duration: 1.5 });
                     logAlert(`Coordinates locked: ${lat.toFixed(4)}, ${lon.toFixed(4)}`, "system");
-                } else {
-                    logAlert(`Geocoding failed: Location not found.`, "critical");
                 }
-            } catch(e) {
-                logAlert(`API Connection Error.`, "critical");
-            }
+            } catch(e) { logAlert(`API Connection Error.`, "critical"); }
         });
 
         async function runLoadingSequence() {
@@ -347,12 +301,17 @@
             map.setMinZoom(14); 
             applyBlackoutCurtain(currentDynamicBounds); 
 
-            const payload = { min_lat: currentDynamicBounds.getSouth(), max_lat: currentDynamicBounds.getNorth(), min_lon: currentDynamicBounds.getWest(), max_lon: currentDynamicBounds.getEast() };
+            // THE FIX: Strict float conversion to prevent Pydantic 422 Errors
+            const payload = { 
+                min_lat: Number(currentDynamicBounds.getSouth().toFixed(5)), 
+                max_lat: Number(currentDynamicBounds.getNorth().toFixed(5)), 
+                min_lon: Number(currentDynamicBounds.getWest().toFixed(5)), 
+                max_lon: Number(currentDynamicBounds.getEast().toFixed(5)) 
+            };
 
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('export-btn').classList.add('hidden'); 
             document.getElementById('pipeline-stages').classList.add('hidden');
-            
             logAlert("System initializing. Acquiring orbital feed...", "system");
             
             document.getElementById('sim-event').innerText = "Awaiting Selection";
