@@ -10,7 +10,14 @@ import base64
 from io import BytesIO
 from PIL import Image
 
-from graph_engine import extract_criticality_from_mask, calculate_impact_metrics
+# Consolidating all imports from graph_engine
+from graph_engine import (
+    extract_criticality_from_mask, 
+    calculate_impact_metrics, 
+    compute_emergency_route, 
+    haversine_distance, 
+    pixel_to_latlon
+)
 from model import AttentionUNet
 
 app = FastAPI()
@@ -31,7 +38,9 @@ DEMO_STATE = {
     "original_graph": None, 
     "bounds": None, 
     "iou": 0.8924, 
-    "stats": None 
+    "stats": None,
+    "ambulance_start": None,
+    "ambulance_end": None
 }
 
 try:    
@@ -42,11 +51,7 @@ try:
         ml_model.load_state_dict(checkpoint)    
     ml_model.eval()    
 except FileNotFoundError: 
-    pass
-
-@app.get("/api/metrics")
-async def get_metrics(): 
-    return {"iou_score": DEMO_STATE["iou"]}
+    print("Warning: road_unet_model.pth not found. Running without weights.")
 
 def encode_image(img_arr):
     pil_img = Image.fromarray(img_arr)
@@ -122,91 +127,103 @@ async def process_mask(request: Request):
     full_mask[256:, :256] = out_bl
     full_mask[256:, 256:] = out_br
     
-    # 1. Probability Map (MAGMA with transparent background)
-    prob_magma = cv2.applyColorMap((full_mask.cpu().numpy() * 255).astype(np.uint8), cv2.COLORMAP_MAGMA)
-    prob_rgba = cv2.cvtColor(prob_magma, cv2.COLOR_BGR2RGBA)
-    alpha_prob = (full_mask.cpu().numpy() * 255).astype(np.uint8)
-    prob_rgba[:, :, 3] = np.clip(alpha_prob * 2, 0, 255) 
-    prob_b64 = encode_image(prob_rgba)
-
-    # 2. Binary Extraction Mask (Translucent Bright Green)
     mask_np = (full_mask > 0.15).cpu().numpy().astype(np.uint8)
-    mask_rgba = np.zeros((512, 512, 4), dtype=np.uint8)
-    mask_rgba[mask_np > 0] = [0, 255, 128, 180] 
-    mask_b64 = encode_image(mask_rgba)
                
     if not np.any(mask_np): 
         return {"network": {"type": "FeatureCollection", "features": []}, "status": "empty_terrain"}        
     
     graph, centrality_scores, topo_stats, skeleton = extract_criticality_from_mask(mask_np, max_bridge_distance=60)        
     
-    # 3. Topological Skeleton (Neon Cyan)
-    skel_rgba = np.zeros((512, 512, 4), dtype=np.uint8)
-    skel_rgba[skeleton] = [0, 229, 255, 255] 
-    skel_b64 = encode_image(skel_rgba)
-    
-    node_count = len(graph.nodes())
-    if node_count > 4500: terrain = "Dense Urban"
-    elif node_count > 2000: terrain = "Urban"
-    elif node_count > 500: terrain = "Semi-Urban"
-    else: terrain = "Rural / Forest"
-    topo_stats["terrain"] = terrain
-    
     DEMO_STATE["graph"] = graph.copy()    
     DEMO_STATE["original_graph"] = graph.copy()    
     DEMO_STATE["bounds"] = (min_lat, max_lat, min_lon, max_lon) 
     DEMO_STATE["stats"] = topo_stats       
-    
+    DEMO_STATE["ambulance_start"] = None
+    DEMO_STATE["ambulance_end"] = None
+
     return {        
         "network": build_geojson_from_graph(graph, centrality_scores, DEMO_STATE["bounds"]),         
-        "resilience_index": 100.0,
-        "raw_mask_b64": mask_b64,
-        "prob_mask_b64": prob_b64,
-        "skeleton_b64": skel_b64,
-        "stats": topo_stats,
         "status": "success"    
     }
 
-@app.post("/api/ablate-edge")
-async def ablate_edge(request: Request):    
-    G = DEMO_STATE.get("graph")    
-    orig_G = DEMO_STATE.get("original_graph")    
-    bounds = DEMO_STATE.get("bounds") 
-    topo_stats = DEMO_STATE.get("stats")       
+@app.post("/api/emergency-route")
+async def emergency_route(request: Request):
+    G = DEMO_STATE.get("graph")
+    bounds = DEMO_STATE.get("bounds")
     
-    if G is None: 
-        return {"error": "No active network loaded."}        
-    
+    if G is None or bounds is None:
+        return {"error": "No active network loaded."}
+        
     try:
         data = await request.json()
     except Exception:
-        return {"error": "Invalid JSON received by server."}
+        return {"error": "Invalid JSON payload."}
         
-    n1_y = int(data.get("n1_y", 0))
-    n1_x = int(data.get("n1_x", 0))
-    n2_y = int(data.get("n2_y", 0))
-    n2_x = int(data.get("n2_x", 0))
+    start_lat = float(data.get("start_lat"))
+    start_lon = float(data.get("start_lon"))
+    end_lat = float(data.get("end_lat"))
+    end_lon = float(data.get("end_lon"))
 
-    edge = ((n1_y, n1_x), (n2_y, n2_x))    
-    if G.has_edge(*edge): 
-        G.remove_edge(*edge)    
-    elif G.has_edge(edge[1], edge[0]): 
-        G.remove_edge(edge[1], edge[0])        
+    DEMO_STATE["ambulance_start"] = (start_lat, start_lon)
+    DEMO_STATE["ambulance_end"] = (end_lat, end_lon)
+
+    route_geojson, dist_km, eta_mins, msg = compute_emergency_route(
+        G, (start_lat, start_lon), (end_lat, end_lon), bounds
+    )
     
-    centrality_scores = nx.betweenness_centrality(G, k=min(50, len(G.nodes())), weight='weight', seed=42)        
-    if centrality_scores:        
-        max_score = max(centrality_scores.values())        
-        if max_score > 0:            
-            for node in centrality_scores: 
-                centrality_scores[node] = centrality_scores[node] / max_score                    
-                
-    ri, eff_drop, time_inc = calculate_impact_metrics(orig_G, G)        
+    return {
+        "route": route_geojson,
+        "distance_km": dist_km,
+        "eta_mins": eta_mins,
+        "status_message": msg,
+        "status": "success" if route_geojson else "severed"
+    }
+
+@app.post("/api/simulate-collapse")
+async def simulate_collapse(request: Request):
+    G = DEMO_STATE.get("graph")
+    bounds = DEMO_STATE.get("bounds")
     
-    return {        
-        "network": build_geojson_from_graph(G, centrality_scores, bounds),         
-        "resilience_index": ri,        
-        "efficiency_drop": eff_drop,
-        "time_increase": time_inc,
-        "stats": topo_stats,
-        "status": "success"    
+    if G is None or bounds is None:
+        return {"error": "No active network loaded."}
+        
+    try:
+        data = await request.json()
+    except Exception:
+        return {"error": "Invalid JSON payload."}
+        
+    disaster_lat = float(data.get("lat"))
+    disaster_lon = float(data.get("lon"))
+    # Adjusted default to 50 meters for a precise bridge/road collapse
+    radius_km = float(data.get("radius_km", 0.05)) 
+
+    nodes_to_remove = []
+    
+    for node in list(G.nodes()):
+        n_lat, n_lon = pixel_to_latlon(node, bounds)
+        dist = haversine_distance(disaster_lat, disaster_lon, n_lat, n_lon)
+        if dist <= radius_km:
+            nodes_to_remove.append(node)
+            
+    G.remove_nodes_from(nodes_to_remove)
+    
+    rerouted_ambulance = None
+    if DEMO_STATE.get("ambulance_start") and DEMO_STATE.get("ambulance_end"):
+        route_geojson, dist_km, eta_mins, msg = compute_emergency_route(
+            G, DEMO_STATE["ambulance_start"], DEMO_STATE["ambulance_end"], bounds
+        )
+        rerouted_ambulance = {
+            "route": route_geojson,
+            "distance_km": dist_km,
+            "eta_mins": eta_mins,
+            "status_message": "REROUTED AROUND COLLAPSE" if route_geojson else "CRITICAL: NO SURVIVING ROUTES!"
+        }
+
+    centrality_scores = nx.betweenness_centrality(G, k=min(20, len(G.nodes())), weight='weight', seed=42)
+    
+    return {
+        "network": build_geojson_from_graph(G, centrality_scores, bounds),
+        "rerouted_ambulance": rerouted_ambulance,
+        "nodes_destroyed": len(nodes_to_remove),
+        "status": "success"
     }
